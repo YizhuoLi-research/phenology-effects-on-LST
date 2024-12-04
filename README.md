@@ -50,9 +50,9 @@
     - Run `003 Merge_actLST_common_EA+NA.R` to merge the LST rasters for each year 
     - Run `004 NA_EA_annual_mean_T--Fig.S4.R` to analyze annual mean LST across EA and NA
     - Run `005 k-Climate_type_lineplot-Fig.S6--T.R` and `005 koppen_31subtype-4Ktypes-polar-Fig.S6-7T.R` to calculate temperature sensitivity across climate type classified by temperature and generate figures
-   - Run `006 k-Climate_type_lineplot-Fig.S7--P.R` and `006 koppen_31subtype-4Ktypes-polar-Fig.S7-6P.R` to calculate temperature sensitivity across climate type classified by precipitation and generate figures
-  -  Run `007 k-of-LSTdiff&LST_yrmean_common pixels.R` to remove outliers in temperature sensitivity values using three times the standard deviation method, and retain only the pixels that have valid sensitivity values after all six phenological transitions.
-  -  Run `008 k-Polar-lmtest_LST_Diff&LST_yrmean--E_Fig.2.R` and `008 k-Polar+5Barplot+np_Histogram--E_Fig.2+legend` for the analysis and figures
+    - Run `006 k-Climate_type_lineplot-Fig.S7--P.R` and `006 koppen_31subtype-4Ktypes-polar-Fig.S7-6P.R` to calculate temperature sensitivity across climate type classified by precipitation and generate figures
+    -  Run `007 k-of-LSTdiff&LST_yrmean_common pixels.R` to remove outliers in temperature sensitivity values using three times the standard deviation method, and retain only the pixels that have valid sensitivity values after all six phenological transitions.
+    -  Run `008 k-Polar-lmtest_LST_Diff&LST_yrmean--E_Fig.2.R` and `008 k-Polar+5Barplot+np_Histogram--E_Fig.2+legend` for the analysis and figures
 
 
 6. 06 Analysis of ΔLST sensitivity pattern

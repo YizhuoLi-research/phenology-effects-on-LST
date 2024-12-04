@@ -48,23 +48,3 @@ for (j in 1:length(sum_diff_types)) {
     writeRaster(merged_raster, filename = filename, overwrite = TRUE)
   }
 }
-
-# file_list1 <- list.files("./NA_Results/0.sum_diff/0common_pixel/", pattern = "sum_diff_12.*\\.tif$", full.names = TRUE)
-# file_list11 <- list.files("./EA_Results/0.sum_diff/0common_pixel/", pattern = "sum_diff_12.*\\.tif$", full.names = TRUE)
-# 
-# #sum_diff_12  sum_diff_23  sum_diff_34  sum_diff_45  sum_diff_56   sum_diff_16
-# 
-# rasters1 <- sapply(file_list1, rast)
-# rasters11 <- sapply(file_list11, rast)
-# 
-# output_path <- "./EA+NA_Results/merge_average_diff_years/"
-# output_folder <- paste0(output_path, "merged_sum_diff_12")
-# # 检查并创建文件夹
-# if (!file.exists(output_folder)) { dir.create(output_folder)  }
-# # i=1
-# for (i in seq_along(rasters1)) {
-#   merged_raster <- merge(rasters1[[i]], rasters11[[i]])
-#   year <- substr(basename(file_list1[i]), nchar(basename(file_list1[i])) - 7, nchar(basename(file_list1[i])) - 4)
-#   filename <- file.path(output_folder, paste0("EA+NA_merged_sum_diff_12_", year, ".tif"))
-#   writeRaster(merged_raster, filename = filename, overwrite = TRUE)
-# }

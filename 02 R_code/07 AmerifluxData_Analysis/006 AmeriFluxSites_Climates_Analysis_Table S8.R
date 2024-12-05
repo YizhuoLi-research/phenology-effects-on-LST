@@ -1,36 +1,37 @@
-###### 0. 加载包 ####
+###### 0. Load Packages ####
+# Purpose: Load necessary libraries and prepare the working environment to calculate 
+# the mean and 0.15*standard deviation of specific columns for different climate zones.
+
 library(tidyverse)
 library(dplyr)
 
+# Set the working directory
 setwd("D:/VegetationImpact")
 
-
-
-
-# 读取数据
+# Read the dataset
 df <- read.csv("./AmerifluxData_Analysis/1330_Noen+Normal_Results_17_all-info.csv")
 
-# 指定要计算的列
-# average_diff_21_mean： immediate temperature effect (ΔLST) after greenup for Ameriflux sites
-# average_diff_26_mean： immediate temperature effect (ΔLST) after doemancy for Ameriflux sites
-# sum_Diff_16_mean: cumulative temperature across the entire growing season
-# days_16_mean: growing season length
-
+# Calculate the specified columns for different climate zones
+# average_diff_21_mean: Immediate temperature effect (ΔLST) after greenup for Ameriflux sites
+# average_diff_26_mean: Immediate temperature effect (ΔLST) after dormancy for Ameriflux sites
+# sum_Diff_16_mean: Cumulative temperature across the entire growing season
+# days_16_mean: Growing season length
+# mean_Diff_16_mean: Mean temperature effect (ΔLST) during the growing season
 
 target_columns <- c("average_diff_21_mean", "average_diff_26_mean", "sum_Diff_16_mean",
                     "days_16_mean","mean_Diff_16_mean")
 
-# 创建三个子集数据框
+# Create three subset data frames
 df_sum <- df
-df_cXa <- df[df$Clim == "Cfa", ]
-df_DXb <- df[df$Clim == "Dfb", ]
+df_cXa <- df[df$Clim == "Cfa", ]  # Subset for Cfa climate
+df_DXb <- df[df$Clim == "Dfb", ]  # Subset for Dfb climate
 
-# 定义一个函数来计算指定列的平均值和0.15*sd，并保留两位小数
+# Define a function to calculate the mean and 0.15*standard deviation for specified columns
 calculate_mean_sd <- function(data, class_label) {
   mean_values <- round(sapply(data[, target_columns], mean, na.rm = TRUE), 2)
   sd_015_values <- round(sapply(data[, target_columns], function(x) 0.15 * sd(x, na.rm = TRUE)), 2)
   
-  # 将平均值和标准差汇总到一个数据框，并添加Class列
+  # Summarize the mean and standard deviation into a data frame and add the "Class" column
   result <- data.frame(
     Variable = target_columns,
     Mean = mean_values,
@@ -41,17 +42,18 @@ calculate_mean_sd <- function(data, class_label) {
   return(result)
 }
 
-# 分别计算每个数据框的平均值和0.15*sd
-df_sum_stats <- calculate_mean_sd(df_sum, "df_sum")
-df_cXa_stats <- calculate_mean_sd(df_cXa, "df_cXa")
-df_DXb_stats <- calculate_mean_sd(df_DXb, "df_DXb")
+# Calculate the mean and 0.15*standard deviation for each subset
+df_sum_stats <- calculate_mean_sd(df_sum, "df_sum")  # Overall data
+df_cXa_stats <- calculate_mean_sd(df_cXa, "df_cXa")  # Cfa climate
+df_DXb_stats <- calculate_mean_sd(df_DXb, "df_DXb")  # Dfb climate
 
-# 合并三个结果数据框
+# Combine the results from the three subsets into a single data frame
 final_df <- rbind(df_sum_stats, df_cXa_stats, df_DXb_stats)
 
+# Print the final combined data frame
 final_df <- final_df
-# 输出结果
 print(final_df)
+
 # Variable   Mean SD_015  Class
 # average_diff_21_mean  average_diff_21_mean    0.45   0.34 df_sum
 # average_diff_26_mean  average_diff_26_mean   -0.39   0.26 df_sum

@@ -1,263 +1,282 @@
-###### 0. 加载包 ####
+###### 0. Load packages ####
 library(tidyverse)
 library(dplyr)
 
 setwd("D:/VegetationImpact")
 
-# 创建地图
+# Create maps
 library(ggplot2)
 library("scales")
 library(sf)
 library(ggrepel)
 
-####################  01 绘制Ameriflux站点地图1   ######################
 
+#################### 02 Plotting Ameriflux Site Map 1: Immediate Temperature Effect after Greenup ######################
+# This section of the code visualizes the immediate temperature effect after greenup for Ameriflux sites.
+# Purpose: The goal of this section is to create a map that visualizes the immediate temperature effect (ΔLST) 
+# after greenup for Ameriflux sites, using their geographic coordinates and temperature data (ΔLST values).
 
 df <- read.csv("./AmerifluxData_Analysis/1330_Noen+Normal_Results_17_all-info.csv")
 head(df)
 
-# 加载美国地图和州界线数据 #  https://catalog.data.gov/
-
+# Load the map of US states and boundaries # https://catalog.data.gov/
 us_states <- read_sf("./01 Download/cb_2022_us_state_20m/cb_2022_us_state_20m.shp")
 lower_48 <- us_states %>%
   filter(!(NAME %in% c("Alaska", "Hawaii", "Puerto Rico")))
-#如果是调用的sf中的
-#usa <- st_as_sf(maps::map("state", fill=TRUE, plot =FALSE))
+# If using sf from maps:
+# usa <- st_as_sf(maps::map("state", fill=TRUE, plot =FALSE))
 
 
-# 查看更新后的数据框
+# View the updated dataframe
 head(df)
-# 将 df 转换为 sf 对象
+# Convert the df to an sf object (spatial data)
 df_sf <- st_as_sf(df, coords = c("long", "lat"), crs = 4326)
-df_sf <- st_transform(df_sf, st_crs(lower_48))      # 转换坐标系统
+df_sf <- st_transform(df_sf, st_crs(lower_48))      # Transform to the coordinate system of lower_48
 df_sf$average_diff_21_mean <- as.numeric(df_sf$average_diff_21_mean)    
 
+# Plot the map
 p1 <- ggplot() +
-  geom_sf(data = lower_48, fill = "grey95", color = "black", size = 1) +
-  geom_sf(data = df_sf, aes(color = average_diff_21_mean), size = 12, alpha = 0.9, shape = 19) +
-  coord_sf(crs = st_crs("ESRI:102003")) +  # 使用 Albers 投影
-  theme_bw() +
-  theme(legend.position = c(0.185, 0.12),  # 将图例放在左下角
-        legend.text = element_text(size = 40),  # 修改图例文本大小
-        legend.title = element_text(size = 42),  # 修改图例标题大小
-        legend.direction = "horizontal",  # 设置图例方向为横向
-        axis.text.x = element_text(size = 42, color = "gray20",margin = margin(t = 20)),  # 设置x轴标签字体大小
-        axis.text.y = element_text(size = 42, color = "gray20",margin = margin(r = 10)),  # 设置y轴标签字体大小
-        axis.ticks.length = unit(-8, "pt"),     # 设置刻度线长度
-        axis.ticks = element_line(size = 2),  # 设置刻度线宽度
+  geom_sf(data = lower_48, fill = "grey95", color = "black", size = 1) +  # Plot the base map of the US
+  geom_sf(data = df_sf, aes(color = average_diff_21_mean), size = 12, alpha = 0.9, shape = 19) +  # Plot the Ameriflux site data
+  coord_sf(crs = st_crs("ESRI:102003")) +  # Use Albers projection
+  theme_bw() +  # Use a white background theme
+  theme(legend.position = c(0.185, 0.12),  # Position the legend at the bottom left
+        legend.text = element_text(size = 40),  # Set the font size for legend text
+        legend.title = element_text(size = 42),  # Set the font size for legend title
+        legend.direction = "horizontal",  # Set the legend direction to horizontal
+        axis.text.x = element_text(size = 42, color = "gray20",margin = margin(t = 20)),  # Set the x-axis label font size
+        axis.text.y = element_text(size = 42, color = "gray20",margin = margin(r = 10)),  # Set the y-axis label font size
+        axis.ticks.length = unit(-8, "pt"),     # Set the length of axis ticks
+        axis.ticks = element_line(size = 2),  # Set the thickness of axis ticks
         
-        panel.border = element_rect(color = "grey20", fill = NA, size = 2)) +
+        panel.border = element_rect(color = "grey20", fill = NA, size = 2)) +  # Add border to the panel
   xlab("") + 
   ylab("") +
   
+  # Customize x and y axes
   scale_x_continuous(breaks = c(-120, -100, -80),
                      labels = c("120°W", "100°W", "80°W")) +
   scale_y_continuous(breaks = c(30, 40, 50),
                      labels = c("30°N", "40°N", "50°N")) +
+  
+  # Set color scale for the temperature difference
   scale_color_gradientn(colours = c("#003366", "#3399CC","#66CCFF", "#FFFFFF",
                                     "#FF9900", "#990000"),
-                        na.value = "transparent",
-                        name = "ΔLST (℃)",
-                        values = scales::rescale(c(-6,-4, -2, 0, 2, 4)),
-                        breaks = c(-6,-4, -2, 0, 2, 4), 
-                        limits = c(-6, 4),
+                        na.value = "transparent",  # Handle missing values
+                        name = "ΔLST (℃)",  # Color bar title
+                        values = scales::rescale(c(-6,-4, -2, 0, 2, 4)),  # Rescale the values for color mapping
+                        breaks = c(-6,-4, -2, 0, 2, 4),  # Set breaks in the color scale
+                        limits = c(-6, 4),  # Set the limits of the color scale
                         guide = guide_colorbar(title.position = "top",
                                                title.hjust = 0.5,
-                                               barwidth = 28,      ####宽度
-                                               barheight = 3,     ####高度
-                                               title.vjust = 0,  # 调整标题与图例的垂直位置
-                                               ticks = T,
-                                               ticks.colour = "white",
-                                               ticks.linewidth = 3.0/.pt,
-                                               nrow = 1))
+                                               barwidth = 28,      # Set color bar width
+                                               barheight = 3,     # Set color bar height
+                                               title.vjust = 0,  # Adjust the vertical position of the title
+                                               ticks = T,  # Show ticks on the color bar
+                                               ticks.colour = "white",  # Set tick color
+                                               ticks.linewidth = 3.0/.pt,  # Set tick line width
+                                               nrow = 1))  # Set number of rows for the color bar
 
-# 显示图形
+# Display the plot
 print(p1)
 
-
+# Save the plot as a TIFF file
 ggsave(
   filename = "./0.figure/Fig.S10-AmeriFlux_1.tiff",
   plot = p1,  width = 20,  height = 15,  units = "in",  dpi = 300)
 
-####################  02 绘制Ameriflux站点地图2   ######################
+
+####################  02 Plot Ameriflux Station Map 2: Immediate Temperature Effect After Dormancy ######################
+# This section of the code visualizes the immediate temperature effect after doemancy for Ameriflux sites.
+# Purpose: The goal of this section is to create a map that visualizes the immediate temperature effect (ΔLST)
+# after dormancy for Ameriflux sites, using their geographic coordinates and temperature data (ΔLST values).
 
 
 df <- read.csv("./AmerifluxData_Analysis/1330_Noen+Normal_Results_17_all-info")
 head(df)
 
-# 加载美国地图和州界线数据
+# Load US map and state boundary data
 us_states <- read_sf("./01 Download/cb_2022_us_state_20m/cb_2022_us_state_20m.shp")
 lower_48 <- us_states %>%
   filter(!(NAME %in% c("Alaska", "Hawaii", "Puerto Rico")))
-#如果是调用的sf中的
-#usa <- st_as_sf(maps::map("state", fill=TRUE, plot =FALSE))
+# If using sf, we could alternatively call:
+# usa <- st_as_sf(maps::map("state", fill=TRUE, plot =FALSE))
 
-# 将 df 转换为 sf 对象
+# Convert the dataframe df to sf object using "long" and "lat" columns
 df_sf <- st_as_sf(df, coords = c("long", "lat"), crs = 4326)
-df_sf <- st_transform(df_sf, st_crs(lower_48))  # 转换坐标系统
-df_sf$average_diff_26_mean <- as.numeric(df_sf$average_diff_26_mean)    ##########
+df_sf <- st_transform(df_sf, st_crs(lower_48))  # Transform coordinate system
+df_sf$average_diff_26_mean <- as.numeric(df_sf$average_diff_26_mean)    # Convert the specific temperature difference to numeric
 
-
+# Plotting the map with temperature differences
 p2 <- ggplot() +
-  geom_sf(data = lower_48, fill = "grey95", color = "black", size = 1) +
-  geom_sf(data = df_sf, aes(color = average_diff_26_mean), size = 12, alpha = 0.9, shape = 19) +
-  coord_sf(crs = st_crs("ESRI:102003")) +  # 使用 Albers 投影
+  geom_sf(data = lower_48, fill = "grey95", color = "black", size = 1) +  # Plot the map of the lower 48 states
+  geom_sf(data = df_sf, aes(color = average_diff_26_mean), size = 12, alpha = 0.9, shape = 19) +  # Plot the Ameriflux stations with temperature differences
+  coord_sf(crs = st_crs("ESRI:102003")) +  # Use Albers projection
   theme_bw() +
-  theme(legend.position = c(0.185, 0.12),  # 将图例放在左下角
-        legend.text = element_text(size = 40),  # 修改图例文本大小
-        legend.title = element_text(size = 42),  # 修改图例标题大小
-        legend.direction = "horizontal",  # 设置图例方向为横向
-        axis.text.x = element_text(size = 42, color = "gray20",margin = margin(t = 20)),  # 设置x轴标签字体大小
-        axis.text.y = element_text(size = 42, color = "gray20",margin = margin(r = 10)),  # 设置y轴标签字体大小
-        axis.ticks.length = unit(-8, "pt"),     # 设置刻度线长度
-        axis.ticks = element_line(size = 2),  # 设置刻度线宽度
+  theme(legend.position = c(0.185, 0.12),  # Position the legend in the bottom left
+        legend.text = element_text(size = 40),  # Set the font size for the legend text
+        legend.title = element_text(size = 42),  # Set the font size for the legend title
+        legend.direction = "horizontal",  # Set the legend orientation to horizontal
+        axis.text.x = element_text(size = 42, color = "gray20", margin = margin(t = 20)),  # Set x-axis label font size
+        axis.text.y = element_text(size = 42, color = "gray20", margin = margin(r = 10)),  # Set y-axis label font size
+        axis.ticks.length = unit(-8, "pt"),     # Set the length of the axis ticks
+        axis.ticks = element_line(size = 2),  # Set the width of the axis ticks
         
-        panel.border = element_rect(color = "grey20", fill = NA, size = 2)) +
+        panel.border = element_rect(color = "grey20", fill = NA, size = 2)) +  # Set the border of the panel
   xlab("") + 
   ylab("") +
   
   scale_x_continuous(breaks = c(-120, -100, -80),
-                     labels = c("120°W", "100°W", "80°W")) +
+                     labels = c("120°W", "100°W", "80°W")) +  # Set x-axis labels
   scale_y_continuous(breaks = c(30, 40, 50),
-                     labels = c("30°N", "40°N", "50°N")) +
-  scale_color_gradientn(colours = c("#003366", "#3399CC","#66CCFF", "#FFFFFF",
+                     labels = c("30°N", "40°N", "50°N")) +  # Set y-axis labels
+  scale_color_gradientn(colours = c("#003366", "#3399CC", "#66CCFF", "#FFFFFF", 
                                     "#FF9900", "#990000"),
-                        na.value = "transparent",
+                        na.value = "transparent",  # Set the color gradient for ΔLST (℃)
                         name = "ΔLST (℃)",
-                        values = scales::rescale(c(-6,-4, -2, 0, 2, 4)),
-                        breaks = c(-6,-4, -2, 0, 2, 4), 
-                        limits = c(-6, 4),
+                        values = scales::rescale(c(-6, -4, -2, 0, 2, 4)),  # Rescale the values
+                        breaks = c(-6, -4, -2, 0, 2, 4),  # Set the breaks for the color scale
+                        limits = c(-6, 4),  # Set the limits for the color scale
                         guide = guide_colorbar(title.position = "top",
                                                title.hjust = 0.5,
-                                               barwidth = 28,      ####宽度
-                                               barheight = 3,     ####高度
-                                               title.vjust = 0,  # 调整标题与图例的垂直位置
-                                               ticks = T,
-                                               ticks.colour = "white",
-                                               ticks.linewidth = 3.0/.pt,
-                                               nrow = 1))
+                                               barwidth = 28,      # Set the width of the color bar
+                                               barheight = 3,     # Set the height of the color bar
+                                               title.vjust = 0,  # Adjust the vertical position of the title
+                                               ticks = T,  # Display ticks
+                                               ticks.colour = "white",  # Set the color of the ticks
+                                               ticks.linewidth = 3.0/.pt,  # Set the thickness of the tick lines
+                                               nrow = 1))  # Set the number of rows for the color bar
 
-# 显示图形
+# Display the plot
 print(p2)
 
-
+# Save the plot to file
 ggsave(
-  filename = "./0.figure/Fig.S10-AmeriFlux_2.tiff",
-  plot = p2,  width = 20,  height = 15,  units = "in",  dpi = 300)
+  filename = "./0.figure/Fig.S10-AmeriFlux_2.tiff",  # Save the figure as a TIFF file
+  plot = p2,  width = 20,  height = 15,  units = "in",  dpi = 300)  # Set the output dimensions and resolution
 
-####################  03 绘制Ameriflux站点地图3 cumulative   ######################
+
+#################  03 Plot Ameriflux Station Map 3: Cumulative Temperature Across Entire Growing Season ######################
+# Purpose: Read data for Ameriflux stations, prepare it, and plot the cumulative temperature effect (ΔLST) 
+# across the entire growing season.
+
 
 df <- read.csv("./AmerifluxData_Analysis/1330_Noen+Normal_Results_17_all-info")
 head(df)
 
+# Set temperature differences greater than 800 to 1000
 df$sum_Diff_16_mean[df$sum_Diff_16_mean > 800] <- 1000
 
-
-# 加载美国地图和州界线数据 
-
+# Load US map and state boundary data
 us_states <- read_sf("./01 Download/cb_2022_us_state_20m/cb_2022_us_state_20m.shp")
 lower_48 <- us_states %>%
   filter(!(NAME %in% c("Alaska", "Hawaii", "Puerto Rico")))
-#如果是调用的sf中的
-#usa <- st_as_sf(maps::map("state", fill=TRUE, plot =FALSE))
+# If using sf, we could alternatively call:
+# usa <- st_as_sf(maps::map("state", fill=TRUE, plot =FALSE))
 
-# 将 df 转换为 sf 对象
+# Convert the dataframe df to an sf object using "long" and "lat" columns
 df_sf <- st_as_sf(df, coords = c("long", "lat"), crs = 4326)
-df_sf <- st_transform(df_sf, st_crs(lower_48))  # 转换坐标系统
-df_sf$sum_Diff_16_mean <- as.numeric(df_sf$sum_Diff_16_mean)  
+df_sf <- st_transform(df_sf, st_crs(lower_48))  # Transform the coordinate system
+df_sf$sum_Diff_16_mean <- as.numeric(df_sf$sum_Diff_16_mean)  # Convert the cumulative temperature difference to numeric
 
-
+# Plotting the map with cumulative temperature differences across the growing season
 p3 <- ggplot() +
-  geom_sf(data = lower_48, fill = "grey95", color = "black", size = 1) +
-  geom_sf(data = df_sf, aes(color = sum_Diff_16_mean), size = 12, alpha = 0.9, shape = 19) +
-  coord_sf(crs = st_crs("ESRI:102003")) +  # 使用 Albers 投影
+  geom_sf(data = lower_48, fill = "grey95", color = "black", size = 1) +  # Plot the map of the lower 48 states
+  geom_sf(data = df_sf, aes(color = sum_Diff_16_mean), size = 12, alpha = 0.9, shape = 19) +  # Plot the Ameriflux stations with cumulative temperature differences
+  coord_sf(crs = st_crs("ESRI:102003")) +  # Use Albers projection
   theme_bw() +
-  theme(legend.position = c(0.185, 0.12),  # 将图例放在左下角
-        legend.text = element_text(size = 40),  # 修改图例文本大小
-        legend.title = element_text(size = 42),  # 修改图例标题大小
-        legend.direction = "horizontal",  # 设置图例方向为横向
-        axis.text.x = element_text(size = 42, color = "gray20",margin = margin(t = 20)),  # 设置x轴标签字体大小
-        axis.text.y = element_text(size = 42, color = "gray20",margin = margin(r = 10)),  # 设置y轴标签字体大小
-        axis.ticks.length = unit(-8, "pt"),     # 设置刻度线长度
-        axis.ticks = element_line(size = 2),  # 设置刻度线宽度
+  theme(legend.position = c(0.185, 0.12),  # Position the legend in the bottom left
+        legend.text = element_text(size = 40),  # Set the font size for the legend text
+        legend.title = element_text(size = 42),  # Set the font size for the legend title
+        legend.direction = "horizontal",  # Set the legend orientation to horizontal
+        axis.text.x = element_text(size = 42, color = "gray20", margin = margin(t = 20)),  # Set x-axis label font size
+        axis.text.y = element_text(size = 42, color = "gray20", margin = margin(r = 10)),  # Set y-axis label font size
+        axis.ticks.length = unit(-8, "pt"),     # Set the length of the axis ticks
+        axis.ticks = element_line(size = 2),  # Set the width of the axis ticks
         
-        panel.border = element_rect(color = "grey20", fill = NA, size = 2)) +
+        panel.border = element_rect(color = "grey20", fill = NA, size = 2)) +  # Set the border of the panel
   xlab("") + 
   ylab("") +
   
   scale_x_continuous(breaks = c(-120, -100, -80),
-                     labels = c("120°W", "100°W", "80°W")) +
+                     labels = c("120°W", "100°W", "80°W")) +  # Set x-axis labels
   scale_y_continuous(breaks = c(30, 40, 50),
-                     labels = c("30°N", "40°N", "50°N")) +
-  scale_color_gradientn(colours = c("#003366","#003366","#006699","#3399CC","#66CCFF",
-                                    "#FFFFFF","#FF9900"),
-                      na.value = "transparent",
-                      name = "Cumulative ΔLST (℃·day)",
-                      values = scales::rescale(c(-1000, -800,-600,-400,-200, 0, 200)),
-                      limits = c(-1000, 200),
-                      breaks = c(-800,-600,-400,-200, 0, 200),  # Specify the breaks for labels
-                      labels = c("≤-800 ","-600","-400","-200","0","200"),  # Specify the corresponding labels
-                      
-                      guide = guide_colorbar(title.position = "top",
-                                             title.hjust = 0.5,
-                                             barwidth = 28,      ####宽度
-                                             barheight = 3,     ####高度
-                                             title.vjust = 0,  # 调整标题与图例的垂直位置
-                                             ticks = T,
-                                             ticks.colour = "white",
-                                             ticks.linewidth = 3.0/.pt,
-                                             nrow = 1))
+                     labels = c("30°N", "40°N", "50°N")) +  # Set y-axis labels
+  scale_color_gradientn(colours = c("#003366","#003366","#006699","#3399CC","#66CCFF", 
+                                    "#FFFFFF","#FF9900"),  # Set the color gradient for Cumulative ΔLST
+                        na.value = "transparent",  # Set transparent color for missing values
+                        name = "Cumulative ΔLST (℃·day)",  # Name the color scale
+                        values = scales::rescale(c(-1000, -800, -600, -400, -200, 0, 200)),  # Rescale the values
+                        limits = c(-1000, 200),  # Set the limits for the color scale
+                        breaks = c(-800, -600, -400, -200, 0, 200),  # Specify the breaks for labels
+                        labels = c("≤-800 ","-600","-400","-200","0","200"),  # Specify the corresponding labels
+                        
+                        guide = guide_colorbar(title.position = "top",
+                                               title.hjust = 0.5,
+                                               barwidth = 28,      # Set the width of the color bar
+                                               barheight = 3,     # Set the height of the color bar
+                                               title.vjust = 0,  # Adjust the vertical position of the title
+                                               ticks = T,  # Display ticks
+                                               ticks.colour = "white",  # Set the color of the ticks
+                                               ticks.linewidth = 3.0/.pt,  # Set the thickness of the tick lines
+                                               nrow = 1))  # Set the number of rows for the color bar
 
-# 显示图形
+# Display the plot
 print(p3)
 
-
+# Save the plot to file
 ggsave(
-  filename = "./0.figure/Fig.S10-AmeriFlux_3.tiff",
-  plot = p3,  width = 20,  height = 15,  units = "in",  dpi = 300)
+  filename = "./0.figure/Fig.S10-AmeriFlux_3.tiff",  # Save the figure as a TIFF file
+  plot = p3,  width = 20,  height = 15,  units = "in",  dpi = 300)  # Set the output dimensions and resolution
 
-####################  04 绘制Ameriflux站点地图4 DOYs   ######################
+
+#################  03 Plot Ameriflux Site Map 4: Growing Season Length ######################
+# Purpose: Read the dataset, preprocess the data, and plot the growing season length at Ameriflux sites
 
 
 df <- read.csv("./AmerifluxData_Analysis/1330_Noen+Normal_Results_17_all-info")
 head(df)
 
+# Adjust outlier values: replace days_16_mean > 240 with 260
 df$sum_Diff_16_mean[df$days_16_mean > 240] <- 260
 
-# 加载美国地图和州界线数据
+# Load US map and state boundaries
 us_states <- read_sf("./01 Download/cb_2022_us_state_20m/cb_2022_us_state_20m.shp")
 lower_48 <- us_states %>%
   filter(!(NAME %in% c("Alaska", "Hawaii", "Puerto Rico")))
-#如果是调用的sf中的
-#usa <- st_as_sf(maps::map("state", fill=TRUE, plot =FALSE))
+# Alternatively, we can use the sf package's built-in map:
+# usa <- st_as_sf(maps::map("state", fill=TRUE, plot =FALSE))
 
-# 将 df 转换为 sf 对象
+# Convert the df to a spatial object (sf)
 df_sf <- st_as_sf(df, coords = c("long", "lat"), crs = 4326)
-df_sf <- st_transform(df_sf, st_crs(lower_48))  # 转换坐标系统
+df_sf <- st_transform(df_sf, st_crs(lower_48))  # Transform coordinate system
 
-
+# Plot the growing season length at each site
 p4 <- ggplot() +
   geom_sf(data = lower_48, fill = "grey95", color = "black", size = 1) +
   geom_sf(data = df_sf, aes(color = days_16_mean), size = 12, alpha = 0.9, shape = 19) +
-  coord_sf(crs = st_crs("ESRI:102003")) +  # 使用 Albers 投影
+  coord_sf(crs = st_crs("ESRI:102003")) +  # Use Albers projection
   theme_bw() +
-  theme(legend.position = c(0.185, 0.12),  # 将图例放在左下角
-        legend.text = element_text(size = 40),  # 修改图例文本大小
-        legend.title = element_text(size = 42),  # 修改图例标题大小
-        legend.direction = "horizontal",  # 设置图例方向为横向
-        axis.text.x = element_text(size = 42, color = "gray20",margin = margin(t = 20)),  # 设置x轴标签字体大小
-        axis.text.y = element_text(size = 42, color = "gray20",margin = margin(r = 10)),  # 设置y轴标签字体大小
-        axis.ticks.length = unit(-8, "pt"),     # 设置刻度线长度
-        axis.ticks = element_line(size = 2),  # 设置刻度线宽度
+  theme(legend.position = c(0.185, 0.12),  # Position legend at the lower left
+        legend.text = element_text(size = 40),  # Change legend text size
+        legend.title = element_text(size = 42),  # Change legend title size
+        legend.direction = "horizontal",  # Set legend direction to horizontal
+        axis.text.x = element_text(size = 42, color = "gray20", margin = margin(t = 20)),  # Set x-axis label font size
+        axis.text.y = element_text(size = 42, color = "gray20", margin = margin(r = 10)),  # Set y-axis label font size
+        axis.ticks.length = unit(-8, "pt"),     # Set tick length
+        axis.ticks = element_line(size = 2),  # Set tick width
         
-        panel.border = element_rect(color = "grey20", fill = NA, size = 2)) +
+        panel.border = element_rect(color = "grey20", fill = NA, size = 2)) +  # Set border around the plot
   xlab("") + 
   ylab("") +
   
+  # Set x and y axis labels with specified breaks and labels
   scale_x_continuous(breaks = c(-120, -100, -80),
                      labels = c("120°W", "100°W", "80°W")) +
   scale_y_continuous(breaks = c(30, 40, 50),
                      labels = c("30°N", "40°N", "50°N")) +
+  
+  # Set color scale for growing season duration, with specified limits and labels
   scale_color_gradientn(colours = c("#FFCC00", "#FF9900",
                                     "#FF6633","#CC3333","#990000", "#330000"),
                         na.value = "transparent",
@@ -269,19 +288,18 @@ p4 <- ggplot() +
                         
                         guide = guide_colorbar(title.position = "top",
                                                title.hjust = 0.5,
-                                               barwidth = 28,      ####宽度
-                                               barheight = 3,     ####高度
-                                               title.vjust = 0,  # 调整标题与图例的垂直位置
+                                               barwidth = 28,      #### Width
+                                               barheight = 3,     #### Height
+                                               title.vjust = 0,  # Adjust title's vertical position
                                                ticks = T,
                                                ticks.colour = "white",
                                                ticks.linewidth = 3.0/.pt,
                                                nrow = 1))
 
-# 显示图形
+# Display the plot
 print(p4)
 
-
-
+# Save the plot as a high-resolution TIFF image
 ggsave(
   filename = "./0.figure/Fig.S10-AmeriFlux_4.tiff",
   plot = p4,  width = 20,  height = 15,  units = "in",  dpi = 300)
@@ -289,38 +307,3 @@ ggsave(
 
 
 
-
-##########################   z 绘制生长季温度气泡图   #########################3
-# 
-# selected_df_1 <- selected_df %>%
-#   mutate(color = ifelse(mean_Diff_16_mean > 0, "#FFA07A", "lightblue"),
-#          size_category = cut(mean_Diff_16_mean,
-#                              breaks = c(-2.5, 0, 2.5, 5, 7.5, 10,12.5),
-#                              labels = c("-2.5-0", "0.0-2.5", "2.5-5.0", "5.0-7.5", "7.5-10", "\u003E 10")))
-# # 
-# # 
-# 
-# # 绘图
-# p2 <- ggplot(selected_df_1, aes(x = MAT, y = MAP)) +
-#   geom_point(aes(size = size_category, color = color), alpha = 0.8) +  # 调整透明度
-#   scale_color_identity() +  # 使用指定的颜色
-#   scale_size_manual(values = c(7, 7, 9, 11, 13, 15), name = "Average ") +  # 自定义大小
-#   labs(x = "Mean Annual Temperature (℃))", y = "Mean Annual Precipitation (℃))",
-#        title = "") +
-#   geom_text(aes(label = substr(site_id, nchar(site_id) - 2, nchar(site_id))), 
-#             vjust = -0.5, size = 5)+  # 只添加站点名称的后三位
-#   guides(color = guide_legend(ncol = 1,keywidth = 2),
-#          fill = guide_legend(byrow = TRUE) ) +
-#   theme_bw() +
-#   ylim(750, 1400) +
-#   xlim(0, 20) +
-#   theme(axis.text.y =  element_text(size = 14,color = "gray20"),
-#         axis.text.x =  element_text(size = 14,color = "gray20"),
-#         axis.title = element_blank(),
-#         panel.grid = element_blank(),
-#         legend.position = "none") +
-#   theme(legend.position = "right")
-# p2
-# 
-# # ggsave(filename =  "./0.figure/Fig.2-Median_1.tiff", 
-# #        plot = p11, width = 4, height = 3 , units = "in", dpi = 300)

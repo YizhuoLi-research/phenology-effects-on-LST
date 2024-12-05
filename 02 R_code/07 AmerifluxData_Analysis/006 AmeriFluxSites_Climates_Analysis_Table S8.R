@@ -11,6 +11,12 @@ setwd("D:/VegetationImpact")
 df <- read.csv("./AmerifluxData_Analysis/1330_Noen+Normal_Results_17_all-info.csv")
 
 # 指定要计算的列
+# average_diff_21_mean： immediate temperature effect (ΔLST) after greenup for Ameriflux sites
+# average_diff_26_mean： immediate temperature effect (ΔLST) after doemancy for Ameriflux sites
+# sum_Diff_16_mean: cumulative temperature across the entire growing season
+# days_16_mean: growing season length
+
+
 target_columns <- c("average_diff_21_mean", "average_diff_26_mean", "sum_Diff_16_mean",
                     "days_16_mean","mean_Diff_16_mean")
 

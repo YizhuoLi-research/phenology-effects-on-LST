@@ -12,18 +12,24 @@
 # resulting in "1330_Noen+Normal_Results_17_all-info". 
 # Here is the codes:
 
-##################   00 重新筛选Ameriflux的植被类型  ###################
+##################   00 Re-select Vegetation Types for Ameriflux Data ###################
 
 
 setwd("D:/VegetationImpact")
 
 
-# 过滤数据，只保留DBF和MF类型
+# This section filters the Ameriflux data to retain only the DBF and MF vegetation types for further analysis.
+# The filtered data will be saved for subsequent analysis and visualization.
+
+# Read the original data
 df <- read.csv("./AmerifluxData_Analysis/1330_Noen+Normal_Results_23_all-info.csv")
 head(df)
+
+# Filter the data to keep only DBF and MF vegetation types
 selected_df <- df[df$Veg %in% c("DBF", "MF"), ]
 head(selected_df)
 
+# Save the filtered data to a new file
 write.csv(selected_df, "./AmerifluxData_Analysis/1330_Noen+Normal_Results_17_all-info.csv", row.names = FALSE)
 
 

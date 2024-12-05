@@ -1,18 +1,24 @@
-##################  00 加载包   ##########################################################################
+##################  00 Load Packages ##########################################################################
 library(terra)
 library(tidyverse)
 library(raster)
 
 setwd("D:/VegetationImpact")
 
-##################  01 按气候--subtype类型取像元计算回归线斜率--给气候类型数据添加属性   ###################
+##################  01 Calculate Slope of Regression Lines for Each Climate-Subtype Region and Add Attributes to Climate Type Data ###################
 
+# Load the raster file with climate data
 r <- raster("./EA+NA_Results/EA+NA_koppen_30km_addClimate.tif")
+
+# Assign sequential values as placeholders (if necessary)
 r[1:30] <- seq(1,30,1)  
 r0 <- r[1:30]
+
+# Convert raster to categorical data for classification
 r <- ratify(r) # Converts raster field to categorical data
 rat <- levels(r)[[1]]
-# Legend in alphabetic order
+
+# Assign climate types to the raster categories in alphabetic order
 rat$climate <- c('Af', 'Am', 'As', 'Aw',
                  'BSh', 'BSk', 'BWh', 'BWk',
                  'Cfa', 'Cfb','Cfc', 
@@ -22,39 +28,33 @@ rat$climate <- c('Af', 'Am', 'As', 'Aw',
                  'Dsa', 'Dsb', 'Dsc','Dsd',
                  'Dwa', 'Dwb', 'Dwc','Dwd', 
                  'EF',  'ET')
-# Remove the placeholders
+
+# Remove the placeholders assigned earlier
 r[1:30] <- r0
-#将修改后的属性表重新赋值给对象r
+
+# Reassign the modified attribute table back to the raster object
 levels(r) <- rat
-# library(rasterVis);levelplot(r)
 
-#划定filter_values_list中每个类型区域的边界
-classify_border <- as.polygons(rast(r))
-# plot(classify_border)
-# 创建气候类型列表
-climate_types <-rat$climate 
-# # 使用 expand.grid 创建所有气候类型的组合  ###31种subtypes
-# all_climates <- expand.grid(climate_types, stringsAsFactors = FALSE)
-# colnames(all_climates) <- "Climate_Type"
-# # 将结果放入一个列表中
-# filter_values_list <- split(all_climates$Climate_Type, 1:nrow(all_climates))
+# Defining climate categories for further processing
+climate_types <- rat$climate 
 
+# Defining specific climate regions for filtering
+filter_value_CfX <- c('Cfa', 'Cfb', 'Cfc')
+filter_value_CsX <- c('Csa', 'Csb', 'Csc')
+filter_value_CwX <- c('Cwa', 'Cwb', 'Cwc')
+filter_value_DfX <- c('Dfa', 'Dfb', 'Dfc', 'Dfd')
+filter_value_DsX <- c('Dsa', 'Dsb', 'Dsc', 'Dsd')
+filter_value_DwX <- c('Dwa', 'Dwb', 'Dwc', 'Dwd')
 
-filter_value_CfX <- c( 'Cfa','Cfb','Cfc')
-filter_value_CsX <- c( 'Csa','Csb','Csc')
-filter_value_CwX <- c( 'Cwa','Cwb','Cwc')
-filter_value_DfX <- c( 'Dfa','Dfb','Dfc','Dfd')
-filter_value_DsX <- c( 'Dsa','Dsb','Dsc','Dsd')
-filter_value_DwX <- c( 'Dwa','Dwb','Dwc','Dwd')
+# Creating a list of these filtered climate categories
+filter_values_list <- list(filter_value_CfX, filter_value_CsX, filter_value_CwX,
+                           filter_value_DfX, filter_value_DsX, filter_value_DwX)
 
-filter_values_list <- list(filter_value_CfX,filter_value_CsX,filter_value_CwX,
-                           filter_value_DfX,filter_value_DsX,filter_value_DwX)
-##################  01 按气候--subtype类型取像元计算回归线斜率--计算6个diff文件的  ###########################
+##################  01 Calculate Slope of Regression Lines for Each Climate-Subtype Region and Compute for 6 Diff Files ###########################
 
-
-# 文件路径和标签列表
+# File paths and labels list for different climate data
 file_paths <- c(
-  "./EA+NA_Results/merge_average_diff_years/merged_average_diff_1/",  #SOS的差值map
+  "./EA+NA_Results/merge_average_diff_years/merged_average_diff_1/",  # SOS difference map
   "./EA+NA_Results/merge_average_diff_years/merged_average_diff_2/",
   "./EA+NA_Results/merge_average_diff_years/merged_average_diff_3/",
   "./EA+NA_Results/merge_average_diff_years/merged_average_diff_4/",
@@ -64,6 +64,7 @@ file_paths <- c(
 
 labels <- c("SOS", "MGP", "GMO", "GDO", "MSP", "EOS")
 
+# Function to perform analysis on each climate region and compute regression slopes
 perform_analysis <- function(file_paths, labels) {
   list_of_results <- list()
   
@@ -74,7 +75,7 @@ perform_analysis <- function(file_paths, labels) {
     file_list_act <- list.files("./EA+NA_Results/merged_actLSTmean_years/", pattern = "\\.tif$", full.names = TRUE)
     LST_act <- rast(c(file_list_act))
     
-    # 进行数据处理
+    # Process the data by adjusting values
     sample = LST_diff      
     sample[is.finite(sample)] = 1
     sample2 = LST_act
@@ -82,13 +83,15 @@ perform_analysis <- function(file_paths, labels) {
     LST_diff = LST_diff * sample[[1]] * sample2[[1]]
     LST_act = LST_act * sample[[1]] * sample2[[1]] 
     
-    # 进行分析
+    # Perform analysis for each climate region subtype
     perform_analysis <- function(classify_border, filter_values) {
       results <- list()
-      # filter_val <- filter_value_Cf
+      # Iterating through each climate subtype (e.g., Cf, Cs, Dw)
       for (filter_val in filter_values) {
         order_val <- match(filter_val, classify_border$EA_koppen_30km_addClimate)
         selected_border_val <- classify_border[order_val, ]
+        
+        # Extract values for both LST difference and actual LST data
         df1_val <-  terra::extract(LST_diff, selected_border_val)
         df2_val <-  terra::extract(LST_act, selected_border_val)
         df_val <- cbind(df1_val[, -1], df2_val[, -1])
@@ -99,17 +102,19 @@ perform_analysis <- function(file_paths, labels) {
           "LST_act2018", "LST_act2019", "LST_act2020", "LST_act2021"
         )
         
+        # Filter columns for differences and actual LST values
         diff_cols_val <- grep("LST_diff", colnames(df_val), value = TRUE)
         act_cols_val <- grep("LST_act", colnames(df_val), value = TRUE)
         
+        # Unlist and merge the difference and actual LST values into one data frame
         LST_diff_values_val <- unlist(df_val[, diff_cols_val])
         LST_act_values_val <- unlist(df_val[, act_cols_val])
         
         new_df_val <- data.frame(LST_diff = LST_diff_values_val, LST_act = LST_act_values_val)
         new_df_val <- na.omit(new_df_val)
         
-        # 检查是否有足够的数据点进行线性拟合  取CD type
-        if (nrow(new_df_val) >=500) {                  #500  3500
+        # Check if there are enough data points for linear fitting (e.g., at least 500 data points)
+        if (nrow(new_df_val) >= 500) {  # Minimum of 500 data points for linear fitting
           model_val <- lm(LST_diff ~ LST_act, data = new_df_val)
           
           results[[length(results) + 1]] <- list(
@@ -119,7 +124,7 @@ perform_analysis <- function(file_paths, labels) {
             p_value = summary(model_val)[["coefficients"]][2, 4]
           )
         } else {
-          # 不足3500个数据点，无法进行线性拟合，跳过这个气候类型
+          # If there are not enough data points (less than 500), skip this climate type
           cat("Insufficient data points for filter value:", filter_val, "\n")
         }
       }
@@ -127,66 +132,77 @@ perform_analysis <- function(file_paths, labels) {
       return(do.call(rbind, results))
     }
     
-    # 执行subtype的操作
+    # Execute analysis for all climate subtypes
     filter_values <- filter_values_list
     results_df <- perform_analysis(classify_border, filter_values)
     results_df <- as.data.frame(results_df)
-    results_df$type <- substr(results_df$Filter_Value, 2, 2)  # 提取第二个字符作为 type
-    results_df$type <- paste("Type ", results_df$type, sep = "")# 将生成的type标签从字母转换为相应的类型名称
+    
+    # Extract the climate type based on filter value (second character in filter value)
+    results_df$type <- substr(results_df$Filter_Value, 2, 2)  # Extract second character as type
+    results_df$type <- paste("Type ", results_df$type, sep = "") # Convert character to type name
     results_df$type <- factor(results_df$type)
+    
+    # Add significance stars based on p-value thresholds
     results_df$stars <- ifelse(results_df$p_value <= 0.001, "***",
                                ifelse(results_df$p_value <= 0.01, "**",
                                       ifelse(results_df$p_value <= 0.05, "*", "")))
-    # ifelse(results_df$p_value <= 0.05, "*", 
-    #        sprintf("%.2f", results_df$p_value))))
-    results_df$stars <- factor(results_df$stars)
-    results_df$Slope <- round(as.numeric(results_df$Slope),4)
-    results_df$R_squared <- round(as.numeric(results_df$R_squared),4)
     
-    # 添加标签
+    # Round the slope and R-squared values for display
+    results_df$stars <- factor(results_df$stars)
+    results_df$Slope <- round(as.numeric(results_df$Slope), 4)
+    results_df$R_squared <- round(as.numeric(results_df$R_squared), 4)
+    
+    # Add label for the specific analysis (e.g., SOS, MGP)
     results_df$PHE <- labels[i]
     
     list_of_results[[i]] <- results_df
   }
   
-  # 将所有结果组合成一个数据框
+  # Combine all results into one data frame
   all_results <- do.call(rbind, list_of_results)
   
   return(all_results)
 }
 
-
-# 执行分析并获取结果
+# Perform the analysis and get the final results
 final_results <- perform_analysis(file_paths, labels)
 
+# Find the maximum and minimum slope values
 max_value <- max(final_results$Slope)
 min_value <- min(final_results$Slope)
 
-# 打印最大和最小值
-print(paste("最大值:", max_value))
-print(paste("最小值:", min_value))
+# Print the maximum and minimum slope values
+print(paste("Maximum value:", max_value))
+print(paste("Minimum value:", min_value))
 
 
-##################    02 绘制lineplot C-type-precipitation  ###########################################################################
+##################    02 Plotting lineplot for C-type-precipitation  ###########################################################################
 
 library(dplyr)
 library(ggplot2)
+
+# Clean the 'Filter_Value' by removing double quotes and convert to character type
 final_results$Filter_Value <- lapply(final_results$Filter_Value, function(x) gsub("\"", "", x))
 final_results$Filter_Value <- as.character(final_results$Filter_Value)
 
+# Reorder the 'PHE' factor levels
 final_results$PHE <- factor(final_results$PHE, levels = c("SOS", "MGP", "GMO", "GDO", "MSP", "EOS"))
 final_results$PHE_num <- as.numeric(final_results$PHE)
+
+# Create a legend column combining the first two characters of 'Filter_Value'
 final_results$legend <- paste0(substr(final_results$Filter_Value, 1, 1), substr(final_results$Filter_Value, 2, 2),"X")
 
-class(final_results$PHE_num )
-class(final_results$Filter_Value )
+# Check the data types
+class(final_results$PHE_num)
+class(final_results$Filter_Value)
 class(final_results$Slope)
 
-# 创建 ggplot 图表
-labels_data <- final_results  # 假设使用与主数据相同的数据来作为标签
-labels_data$label_text <- paste("", final_results$stars)  # 创建标签文本
+# Create ggplot chart labels data
+labels_data <- final_results  # Use the main dataset for labels
+labels_data$label_text <- paste("", final_results$stars)  # Create label text
 
 ###
+# Filter data for C-type and D-type climates
 k_df_C <- labels_data %>%
   filter(substr(legend, 1, 1) == "C")
 
@@ -194,84 +210,92 @@ k_df_D <- labels_data %>%
   filter(substr(legend, 1, 1) == "D")
 
 
-###########################  04-1 绘制C-climatetype的k值lineplot图   #####################################################################
+###########################  04-1 Plotting lineplot for C-climate type k-value   #####################################################################
 
-k_df_C$Slope <-   as.numeric(k_df_C$Slope)     
-k_df_D$Slope <-   as.numeric(k_df_D$Slope)     
+# Ensure 'Slope' is numeric
+k_df_C$Slope <- as.numeric(k_df_C$Slope)     
+k_df_D$Slope <- as.numeric(k_df_D$Slope)     
 
-
+# Create a line plot for the C-type climate
 p1 <- ggplot(k_df_C, aes(x = PHE, y = Slope, group = legend, color = legend)) +
-  geom_line(size = 5) +                       # 增加线条的粗细
+  geom_line(size = 5) +                       # Increase line thickness
   geom_text(data = k_df_C, aes(label = label_text), vjust = -0, size = 20, 
-            show.legend = FALSE)+             #不显示字标图例
-  # labs(x = "Phenological index", y = "β (℃/℃  )") +  # 坐标轴标签
-  labs(x = "Phenological index", y =expression(paste(D[T]~"(℃/℃)")))+ 
-  theme_minimal() +                           # 使用简洁主题
-  geom_hline(yintercept = 0, linetype = "dashed", color = "#999999",size=2) +
+            show.legend = FALSE) +             # Don't display text legend
+  labs(x = "Phenological index", y = expression(paste(D[T]~"(℃/℃)"))) + # Axis labels
+  theme_minimal() +                           # Use a minimal theme
+  geom_hline(yintercept = 0, linetype = "dashed", color = "#999999", size = 2) + # Add a dashed horizontal line at y = 0
   scale_color_manual(
-    values = c( "#005000", "#00AA00", "#96FF00"),
+    values = c( "#005000", "#00AA00", "#96FF00"),  # Custom colors for the climate types
     labels = c("CfX", "CsX", "CwX"),
     name = "Climate type"
-  )+
+  ) +
   theme(legend.position = "right") + 
-  coord_fixed(ratio = 1/0.5) +
-  theme( legend.position = c(0.84, 0.88), 
-         axis.text.x  = element_text(size = 36), 
-         axis.text.y  = element_text(size = 42), 
-         axis.line = element_line(size = 2),  # 调整坐标轴线粗细为 2
-         axis.ticks = element_line(size = 2), 
-         axis.ticks.length = unit(0.2, "cm"),
-         axis.title = element_text(size = 45,margin = margin(t = 10)),
-         legend.title = element_text(size = 37),
-         legend.text = element_text(size = 37),
-         axis.title.x = element_text(margin = margin(t = 20)),# 调整 x 轴标题与 x 轴的距离（例如设置为 20）
-         panel.grid = element_line( linetype = "blank"))+
-  guides(color = guide_legend(ncol = 1,keywidth = 2),    #图例线长
-         fill = guide_legend(byrow = TRUE))+ 
-  scale_y_continuous(breaks = c(-1.0,-0.5,0,0.5, 1.0), limits = c(-1.0, 1.0))  # 在 scale_y_continuous 中设置 limits
-  # ylim(-1.5 ,0.5)
+  coord_fixed(ratio = 1/0.5) + # Adjust the aspect ratio
+  theme(
+    legend.position = c(0.84, 0.88), 
+    axis.text.x  = element_text(size = 36), 
+    axis.text.y  = element_text(size = 42), 
+    axis.line = element_line(size = 2),  # Adjust axis line thickness
+    axis.ticks = element_line(size = 2), 
+    axis.ticks.length = unit(0.2, "cm"),
+    axis.title = element_text(size = 45, margin = margin(t = 10)),
+    legend.title = element_text(size = 37),
+    legend.text = element_text(size = 37),
+    axis.title.x = element_text(margin = margin(t = 20)), # Adjust the distance between x-axis and x-axis title
+    panel.grid = element_line(linetype = "blank")
+  ) +
+  guides(color = guide_legend(ncol = 1, keywidth = 2),    # Adjust legend key length
+         fill = guide_legend(byrow = TRUE)) + 
+  scale_y_continuous(breaks = c(-1.0, -0.5, 0, 0.5, 1.0), limits = c(-1.0, 1.0))  # Set y-axis limits and breaks
+
 p1
 
+# Save the plot as a .tiff file
 ggsave(
   filename = "./0.figure/Fig.S7-lineplot_C-P.tiff",
-  plot = p1,  width = 15,  height = 11,  units = "in",  dpi = 300)
+  plot = p1,  width = 15,  height = 11,  units = "in",  dpi = 300
+)
 
 
-###########################  04-2 绘制D-climatetype的k值lineplot图   #####################################################################
+###########################  04-2 Plotting lineplot for D-climate type k-value   #####################################################################
 
-
+# Create a line plot for the D-type climate
 p2 <- ggplot(k_df_D, aes(x = PHE, y = Slope, group = legend, color = legend)) +
-  geom_line(size = 5) +                       # 增加线条的粗细
+  geom_line(size = 5) +                       # Increase line thickness
   geom_text(data = k_df_D, aes(label = label_text), vjust = -0, size = 20, 
-            show.legend = FALSE)+             #不显示字标图例
-  # labs(x = "Phenological index", y = "β (℃/℃  )") +  # 坐标轴标签
-  labs(x = "Phenological index", y =expression(paste(D[T]~"(℃/℃)")))+ 
-  theme_minimal() +                           # 使用简洁主题
-  geom_hline(yintercept = 0, linetype = "dashed", color = "#999999",size=2) +
-  guides(color = guide_legend(ncol = 1))+
+            show.legend = FALSE) +             # Don't display text legend
+  labs(x = "Phenological index", y = expression(paste(D[T]~"(℃/℃)"))) + # Axis labels
+  theme_minimal() +                           # Use a minimal theme
+  geom_hline(yintercept = 0, linetype = "dashed", color = "#999999", size = 2) + # Add a dashed horizontal line at y = 0
+  guides(color = guide_legend(ncol = 1)) +    # Adjust the legend layout
   scale_color_manual(
-    values = c( "#003366", "#006699", "#66CCFF"),
+    values = c( "#003366", "#006699", "#66CCFF"),  # Custom colors for the climate types
     labels = c("DfX", "DsX", "DwX"),
     name = "Climate type"
-  )+
+  ) +
   theme(legend.position = "right") + 
-  coord_fixed(ratio = 1/0.5) +
-  theme( legend.position = c(0.84, 0.88), 
-         axis.text.x  = element_text(size = 36), 
-         axis.text.y  = element_text(size = 42), 
-         axis.line = element_line(size = 2),  # 调整坐标轴线粗细为 2
-         axis.ticks = element_line(size = 2), 
-         axis.ticks.length = unit(0.2, "cm"),
-         axis.title = element_text(size = 45,margin = margin(t = 10)),
-         legend.title = element_text(size = 37),
-         legend.text = element_text(size = 37),
-         axis.title.x = element_text(margin = margin(t = 20)),# 调整 x 轴标题与 x 轴的距离（例如设置为 20）
-         panel.grid = element_line( linetype = "blank"))+
-  guides(color = guide_legend(keywidth = 2),fill = guide_legend(byrow = TRUE))+  #图例线长
-  scale_y_continuous(breaks = c(-0.5,0,0.5, 1.0), limits = c(-0.6, 1.4))  # 在 scale_y_continuous 中设置 limits
+  coord_fixed(ratio = 1/0.5) + # Adjust the aspect ratio
+  theme(
+    legend.position = c(0.84, 0.88), 
+    axis.text.x  = element_text(size = 36), 
+    axis.text.y  = element_text(size = 42), 
+    axis.line = element_line(size = 2),  # Adjust axis line thickness
+    axis.ticks = element_line(size = 2), 
+    axis.ticks.length = unit(0.2, "cm"),
+    axis.title = element_text(size = 45, margin = margin(t = 10)),
+    legend.title = element_text(size = 37),
+    legend.text = element_text(size = 37),
+    axis.title.x = element_text(margin = margin(t = 20)), # Adjust the distance between x-axis and x-axis title
+    panel.grid = element_line(linetype = "blank") # Remove grid lines
+  ) +
+  guides(color = guide_legend(keywidth = 2), fill = guide_legend(byrow = TRUE)) +  # Adjust legend key length
+  scale_y_continuous(breaks = c(-0.5, 0, 0.5, 1.0), limits = c(-0.6, 1.4))  # Set y-axis limits and breaks
+
+# Display the plot
 p2
 
+# Save the plot as a .tiff file
 ggsave(
   filename = "./0.figure/Fig.S7-lineplot_D-P.tiff",
-  plot = p2,  width = 15,  height = 11,  units = "in",  dpi = 300)
-
+  plot = p2,  width = 15,  height = 11,  units = "in",  dpi = 300
+)

@@ -33,11 +33,6 @@ classify_border <- as.polygons(rast(r))
 # plot(classify_border)
 # 创建气候类型列表
 climate_types <-rat$climate 
-# # 使用 expand.grid 创建所有气候类型的组合  ###31种subtypes
-# all_climates <- expand.grid(climate_types, stringsAsFactors = FALSE)
-# colnames(all_climates) <- "Climate_Type"
-# # 将结果放入一个列表中
-# filter_values_list <- split(all_climates$Climate_Type, 1:nrow(all_climates))
 
 
 filter_value_CfX <- c( 'Cfa','Cfb','cfc')

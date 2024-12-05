@@ -1,5 +1,4 @@
-
-###### 0.加载包和数据 ####
+###### 0. Load packages and data ####
 library(terra)
 library(tidyverse)
 library(raster)
@@ -9,86 +8,95 @@ library(scales)
 
 setwd("D:/VegetationImpact")
 
-################     0.获取9年差值的平均影像（6个PHE6张）   ####################
-#####################  NA区域上的均值
+################     0. Obtain the average image of 9 years difference (6 PHE images)   ####################
+#####################  Calculate the average for the NA region
 
+# Get the list of .tif files in the NA region
 file_list <- list.files("./NA_Results/0.sum_diff/0common_pixel", pattern = "\\.tif$", 
                         full.names = TRUE)
-file_groups <- substr(basename(file_list), 1, 11)  #SOS --9年；... 提取前x个字符进行分组
 
+# Extract the first 11 characters from the file names for grouping (e.g., SOS -- 9 years)
+file_groups <- substr(basename(file_list), 1, 11)  
+
+# Get unique group names
 file_groups_name <- unique(file_groups)
 
-# 创建新文件夹
+# Create a new folder to save the averaged images
 new_folder <- "./NA_Results/0.sum_diff/NA_SUM_9yearAverge"
 dir.create(new_folder, showWarnings = FALSE)
 
-# 对每个分组中的影像求平均并保存
+# Calculate the average for each group and save the results
 for (group in file_groups_name) {
-  # 筛选属于当前分组的文件
+  # Filter the files belonging to the current group
   current_files <- file_list[file_groups == group]
   
-  # 读取当前分组的影像并求平均
+  # Read the images of the current group and calculate the average
   current_images <- lapply(current_files, raster::raster)
-  average_image <- raster::mean(stack(current_images),na.rm = TRUE)
+  average_image <- raster::mean(stack(current_images), na.rm = TRUE)
   
-  # 生成新文件名并保存影像
+  # Generate the new file name and save the averaged image
   new_file_name <- file.path(new_folder, paste0(group, ".tif"))
-  raster::writeRaster(average_image, filename = new_file_name,overwrite=TRUE)
+  raster::writeRaster(average_image, filename = new_file_name, overwrite = TRUE)
 }
 
 
-#####################  EA区域上的均值
+#####################  Calculate the average for the EA region
 
+# Get the list of .tif files in the EA region
 file_list <- list.files("./EA_Results/0.sum_diff/0common_pixel", pattern = "\\.tif$", 
                         full.names = TRUE)
-file_groups <- substr(basename(file_list), 1, 11)  #SOS --9年；... 提取前x个字符进行分组
 
+# Extract the first 11 characters from the file names for grouping (e.g., SOS -- 9 years)
+file_groups <- substr(basename(file_list), 1, 11)  
+
+# Get unique group names
 file_groups_name <- unique(file_groups)
 
-# 创建新文件夹
+# Create a new folder to save the averaged images
 new_folder <- "./EA_Results/0.sum_diff/EA_SUM_9yearAverge"
 dir.create(new_folder, showWarnings = FALSE)
 
-# 对每个分组中的影像求平均并保存
+# Calculate the average for each group and save the results
 for (group in file_groups_name) {
-  # 筛选属于当前分组的文件
+  # Filter the files belonging to the current group
   current_files <- file_list[file_groups == group]
   
-  # 读取当前分组的影像并求平均
+  # Read the images of the current group and calculate the average
   current_images <- lapply(current_files, raster::raster)
-  average_image <- raster::mean(stack(current_images),na.rm = TRUE)
+  average_image <- raster::mean(stack(current_images), na.rm = TRUE)
   
-  # 生成新文件名并保存影像
+  # Generate the new file name and save the averaged image
   new_file_name <- file.path(new_folder, paste0(group, ".tif"))
-  raster::writeRaster(average_image, filename = new_file_name,overwrite=TRUE)
+  raster::writeRaster(average_image, filename = new_file_name, overwrite = TRUE)
 }
 
 
 
-################    ## 0.合并9年差值的平均影像（6个PHE6张）   ####################
+################    ## 0. Merge the average difference images of 9 years (6 PHE images)   ####################
 
-# 创建输出目录
+# Create the output directory for merged files
 dir.create(output_path <- "./EA+NA_Results/merged_sum_diff_average", showWarnings = FALSE, recursive = TRUE)
 
-# 获取文件列表
+# Get the list of averaged files for both NA and EA regions
 NA_SUM_files <- list.files("./NA_Results/0.sum_diff/NA_SUM_9yearAverge", pattern = "\\.tif$", full.names = TRUE)
 EA_SUM_files <- list.files("./EA_Results/0.sum_diff/EA_SUM_9yearAverge", pattern = "\\.tif$", full.names = TRUE)
 
-# 确保文件数目一致
+# Check if the number of files is the same in both regions
 if (length(NA_SUM_files) != length(EA_SUM_files)) {
-  stop("文件数目不一致，无法一一对应。")
+  stop("The number of files does not match and cannot be paired.")
 }
 
 
-# 一一对应合并文件
+# Merge corresponding files one by one
 for (i in seq_along(NA_SUM_files)) {
+  # Load the NA and EA rasters
   NA_raster <- rast(NA_SUM_files[i])
   EA_raster <- rast(EA_SUM_files[i])
   
-  # 使用 merge 合并两个 raster
+  # Use merge to combine the two rasters
   merged_raster <- merge(NA_raster, EA_raster, 
                          filename = file.path(output_path, paste0("merged_", basename(NA_SUM_files[i]))))
   
-  print(paste("已合并文件:", basename(NA_SUM_files[i])))
+  # Print status message
+  print(paste("Merged file:", basename(NA_SUM_files[i])))
 }
-

@@ -1,18 +1,24 @@
-##################  00 加载包   ##########################################################################
+##################  00 Load Required Packages   ##########################################################################
 library(terra)
 library(tidyverse)
 library(raster)
 
 setwd("D:/VegetationImpact")
 
-##################  01 按气候--subtype类型提取数据--给气候类型数据添加属性   ###################
+##################  01 Extract Data by Climate Type and Subtype -- Add Attributes to Climate Type Data   ###################
 
-r <- raster("./EA+NA_Results/EA_NA_koppen_30km_addClimate.tif")
+# Load the climate raster data
+r <- raster("./EA+NA_Results/EA+NA_koppen_30km_addClimate.tif")
+
+# Modify the raster data with values from 1 to 30 for testing
 r[1:30] <- seq(1,30,1)  
 r0 <- r[1:30]
-r <- ratify(r) # Converts raster field to categorical data
+
+# Convert the raster data to categorical values (classify)
+r <- ratify(r)  # Converts raster field to categorical data
 rat <- levels(r)[[1]]
-# Legend in alphabetic order
+
+# Assign the climate categories in alphabetical order
 rat$climate <- c('Af', 'Am', 'As', 'Aw',
                  'BSh', 'BSk', 'BWh', 'BWk',
                  'Cfa', 'Cfb','Cfc', 
@@ -22,24 +28,22 @@ rat$climate <- c('Af', 'Am', 'As', 'Aw',
                  'Dsa', 'Dsb', 'Dsc','Dsd',
                  'Dwa', 'Dwb', 'Dwc','Dwd', 
                  'EF',  'ET')
-# Remove the placeholders
+
+# Restore the modified values back into the raster object
 r[1:30] <- r0
-#将修改后的属性表重新赋值给对象r
+
+# Reassign the modified attribute table to the raster object
 levels(r) <- rat
 # library(rasterVis);levelplot(r)
 
-#划定filter_values_list中每个类型区域的边界
+# Create the borders for each climate region defined by 'filter_values_list'
 classify_border <- as.polygons(rast(r))
 # plot(classify_border)
-# 创建气候类型列表
-climate_types <-rat$climate 
-# # 使用 expand.grid 创建所有气候类型的组合  ###31种subtypes
-# all_climates <- expand.grid(climate_types, stringsAsFactors = FALSE)
-# colnames(all_climates) <- "Climate_Type"
-# # 将结果放入一个列表中
-# filter_values_list <- split(all_climates$Climate_Type, 1:nrow(all_climates))
 
+# Create a list of climate types
+climate_types <- rat$climate 
 
+# Define the climate subtypes for each climate zone
 filter_value_CXa <- c( 'Csa','Cfa','Cwa')
 filter_value_CXb <- c( 'Csb','Cfb','Cwb')
 filter_value_CXc <- c( 'Csc','Cfc','Cwc')
@@ -48,14 +52,14 @@ filter_value_DXb <- c( 'Dsb','Dfb','Dwb')
 filter_value_DXc <- c( 'Dsc','Dfc','Dwc')
 filter_value_DXd <- c( 'Dsd','Dfd','Dwd')
 
+# Combine the subtypes into a list for filtering purposes
 filter_values_list <- list(filter_value_CXa,filter_value_CXb,filter_value_CXc,
                            filter_value_DXa,filter_value_DXb,filter_value_DXc,filter_value_DXd)
 
 
-##################  02 按气候--subtype类型取6个物候阶段的数值作图  ###########################
+##################  02 Extract Values for Six Phenological Stages by Climate Type and Subtype, and Plot the Results ###########################
 
-
-# 文件路径和标签列表
+# File paths and labels for the phenological stages
 file_paths <- c(
   "./EA+NA_Results/merged_sum_diff_average/merged_sum_diff_12.tif",
   "./EA+NA_Results/merged_sum_diff_average/merged_sum_diff_23.tif",
@@ -66,371 +70,440 @@ file_paths <- c(
   
 )
 
+# Labels for the different phases of phenology
 labels <- c("SOS-MGP", "MGP-GMO", "GMO-GDO", "GDO-MSP", "MSP-EOS","SOS-EOS")
 
+# Function to perform the analysis on climate types and subtypes
 perform_analysis <- function(file_paths, labels) {
-     list_of_results <- list()
-
+  list_of_results <- list()
   
-     i = 1
- 
-   for (i in seq_along(file_paths)) {
-
+  # Loop over each file path to extract data
+  for (i in seq_along(file_paths)) {
     
-     file_path <- file_paths[i]
-     
-     LST_sumdiff <- rast(file_path)
-
-    # 进行分析
+    # Load each LST (Land Surface Temperature) difference file
+    file_path <- file_paths[i]
+    LST_sumdiff <- rast(file_path)
+    
+    # Perform analysis for each climate subtype (climate region)
     perform_analysis <- function(classify_border, filter_values) {
       results <- list() 
-      filter_val <- filter_value_CXa
       
+      # Loop over each climate region in the filter_values list
       for (filter_val in filter_values) {
         order_val <- match(filter_val, classify_border$EA_koppen_30km_addClimate)
         selected_border_val <- classify_border[order_val, ]
+        
+        # Extract the LST difference values for the selected climate region
         df_val <- raster::extract(LST_sumdiff, selected_border_val)
-        df_val <- df_val[, -1]
+        df_val <- df_val[, -1]  # Remove the first column
         df_val <- data.frame(df_val)
         
-        colnames(df_val) <- c(
-          "LST_sumdiff"   )
+        colnames(df_val) <- c("LST_sumdiff")
         
+        # Extract the LST values
         sumdiff_cols_val <- grep("LST_sumdiff", colnames(df_val), value = TRUE)
-
         LST_sumdiff_values_val <- unlist(df_val[, sumdiff_cols_val])
-
+        
+        # Prepare the results dataframe
         new_df_val <- data.frame(LST_sumdiff = LST_sumdiff_values_val)
-
+        
+        # Append the results to the list
         results[[length(results) + 1]] <- list(
-            Filter_Value = paste(sprintf('"%s"', filter_val), collapse = ", "), 
-            mean_value =  mean(new_df_val$LST_sumdiff, na.rm = TRUE),
-            sd_value = sd(new_df_val$LST_sumdiff, na.rm = TRUE)
-          )
-     
+          Filter_Value = paste(sprintf('"%s"', filter_val), collapse = ", "), 
+          mean_value =  mean(new_df_val$LST_sumdiff, na.rm = TRUE),
+          sd_value = sd(new_df_val$LST_sumdiff, na.rm = TRUE)
+        )
+        
       }
       return(do.call(rbind, results))
     }
     
-    # 执行subtype的操作
+    # Perform analysis on the subtypes (regions)
     filter_values <- filter_values_list
     results_df <- perform_analysis(classify_border, filter_values)
     results_df <- as.data.frame(results_df)
+    
+    # Add a new column 'type' based on Filter_Value
     results_df$type <- paste0(substr(results_df$Filter_Value, 2, 2),
                               "X",substr(results_df$Filter_Value, 4, 4))
     results_df$type <- as.factor(results_df$type)
     results_df$mean_value <- round(as.numeric(results_df$mean_value),2)
     results_df$sd_value <- round(as.numeric(results_df$sd_value),2)
-   
     
-    # 添加标签
+    # Add the phenological stage label to the dataframe
     results_df$Phe_phase <- labels[i]
     
+    # Store the results for this phenological stage
     list_of_results[[i]] <- results_df
   }
   
-  # 将所有结果组合成一个数据框
+  # Combine all the results into a single data frame
   all_results <- do.call(rbind, list_of_results)
   
   return(all_results)
 }
 
 
-# 执行分析并获取结果
+# Perform the analysis and obtain the final results
 final_results <- perform_analysis(file_paths, labels)
-final_results$Filter_Value <- as.character(final_results$Filter_Value) ##########在这里统一变负值-
-final_results$error_bars <- round(final_results$sd_value* 0.15, 2)   
+final_results$Filter_Value <- as.character(final_results$Filter_Value) 
+
+# Calculate error bars as 15% of the standard deviation
+final_results$error_bars <- round(final_results$sd_value* 0.15, 2)
+
+# Calculate the max and min values for the mean values
 max_value <- max(final_results$mean_value)
 min_value <- min(final_results$mean_value)
-# class(final_results$type)
-# 打印最大和最小值
-print(paste("最大值:", max_value))
-print(paste("最小值:", min_value))
+
+# Print the maximum and minimum values
+print(paste("Maximum value:", max_value))
+print(paste("Minimum value:", min_value))
 
 
 
-###########################  03-CXa 绘制 7种 subtype的barplot图   #####################################################################
 
+########################### 03-CXa Plot, Barplot for 7 Subtypes  #####################################################################
 
-# df_CXa1 <- final_results %>%
-#   filter(type == "CXa")
-df_CXa <- final_results[final_results$type == "CXa", ]  #查看数据制作S_table5
+# Filter the data for "CXa" subtype and exclude "SOS-EOS" phase for analysis (S_table5 preparation)
+df_CXa <- final_results[final_results$type == "CXa", ]  
 df_CXa <- df_CXa[df_CXa$Phe_phase != "SOS-EOS", ]
+
+# Define color palette for each phase
 colors <- c("SOS-MGP" = "#99CC33", "MGP-GMO" = "#66CC00", "GMO-GDO" = "#006600",
             "GDO-MSP" = "#CCCC33", "MSP-EOS" = "#CC9900")
+
+# Set the order of the phases in the plot
 df_CXa$Phe_phase <- factor(df_CXa$Phe_phase, levels = names(colors))  
 
+# Convert mean_value to numeric format
 df_CXa$mean_value <- as.numeric(df_CXa$mean_value)  
 
-# 绘制柱状图并添加误差线（细化线条）
+# Create the barplot with error bars (fine-tune line widths)
 p1 <- ggplot(df_CXa, aes(x = Phe_phase, y = mean_value, fill = Phe_phase)) +
-  geom_bar(stat = "identity", color = alpha("black", 0), fill = colors) +  # 绘制柱状图
+  geom_bar(stat = "identity", color = alpha("black", 0), fill = colors) +  # Draw bar plot
   geom_errorbar(aes(ymin = mean_value - error_bars, ymax = mean_value + error_bars), 
-                size = 3, width = 0.5, color = "gray30") +  # 添加误差线
-  labs(y = "Cumulative ΔLST (℃·day)") +  # 添加轴标签
-  theme_bw() +  # 设定主题
-  theme(panel.grid.major.x = element_blank(),         # 隐藏x轴网格线
-        panel.grid.minor.x = element_blank(),         # 隐藏x轴次要网格线
-        panel.border = element_rect(size = 2),        # 设置整个图的框线大小
+                size = 3, width = 0.5, color = "gray30") +  # Add error bars
+  labs(y = "Cumulative ΔLST (℃·day)") +  # Add y-axis label
+  theme_bw() +  # Set the theme to black and white
+  theme(panel.grid.major.x = element_blank(),         # Hide major x-axis grid lines
+        panel.grid.minor.x = element_blank(),         # Hide minor x-axis grid lines
+        panel.border = element_rect(size = 2),        # Set border size for the plot
         axis.text.y  = element_text(size = 70, color = "black"), 
-        axis.ticks.y = element_line(size = 2.5),  # 显示坐标轴刻度宽度
-        axis.ticks.length.y = unit(0.3, "cm"),   # 显示坐标轴刻度长度
+        axis.ticks.y = element_line(size = 2.5),  # Increase y-axis tick width
+        axis.ticks.length.y = unit(0.3, "cm"),   # Set y-axis tick length
         axis.title.y = element_text(size = 78), 
-        axis.title.x = element_text(size = 0),  # 隐藏 x 轴标题
-        plot.background = element_rect(size = 100),      # 设置整个图的背景框线大小
+        axis.title.x = element_text(size = 0),  # Hide x-axis title
+        plot.background = element_rect(size = 100),      # Set background border size
         plot.margin = margin(t = 20, b = 10, l = 10, r = 20, unit = "pt"),
-        legend.position = "none",
-        panel.grid = element_line(linetype = "blank"),
-        axis.text.x = element_blank(),  # 隐藏 x 轴文字
-        axis.ticks.x = element_blank()) +  # 隐藏 x 轴刻度
-  scale_y_continuous(limits = c(-1200, 0), breaks = c(-1200,-900,-600,-300,0))
+        legend.position = "none",  # Remove legend
+        panel.grid = element_line(linetype = "blank"),  # Hide grid lines
+        axis.text.x = element_blank(),  # Hide x-axis text
+        axis.ticks.x = element_blank()) +  # Hide x-axis ticks
+  scale_y_continuous(limits = c(-1200, 0), breaks = c(-1200,-900,-600,-300,0))  # Set y-axis limits and breaks
 
+# Display the plot
 p1
 
+# Save the plot as a TIFF file
 ggsave(
   filename = "./0.figure/Fig.3-barplot_mean_CXa.tiff",
   plot = p1,  width = 16.5,  height = 13,  units = "in",  dpi = 300)
 
 
-###########################  03-CXb 绘制 7种 subtype的barplot图   #####################################################################
+########################### 03-CXb Plot, Barplot for 7 Subtypes  #####################################################################
 
-df_CXb <- final_results[final_results$type == "CXb", ]  #查看数据制作S_table5
+# Filter the data for "CXb" subtype and exclude "SOS-EOS" phase for analysis (S_table5 preparation)
+df_CXb <- final_results[final_results$type == "CXb", ]  
 df_CXb <- df_CXb[df_CXb$Phe_phase != "SOS-EOS", ]
+
+# Define color palette for each phase
 colors <- c("SOS-MGP" = "#99CC33", "MGP-GMO" = "#66CC00", "GMO-GDO" = "#006600",
             "GDO-MSP" = "#CCCC33", "MSP-EOS" = "#CC9900")
+
+# Set the order of the phases in the plot
 df_CXb$Phe_phase <- factor(df_CXb$Phe_phase, levels = names(colors)) 
 
+# Convert mean_value to numeric format
 df_CXb$mean_value <- as.numeric(df_CXb$mean_value)
 
 
-# 绘制柱状图并添加误差线（细化线条）
+# Create the barplot with error bars (fine-tune line widths)
 p2 <- ggplot(df_CXb, aes(x = Phe_phase, y = mean_value, fill = Phe_phase)) +
-  geom_bar(stat = "identity", color = alpha("black", 0), fill = colors) +  # 绘制柱状图
+  geom_bar(stat = "identity", color = alpha("black", 0), fill = colors) +  # Draw bar plot
   geom_errorbar(aes(ymin = mean_value - error_bars, ymax = mean_value + error_bars), 
-                size = 3, width = 0.5, color = "gray30") +  # 添加误差线
-  labs(y = "Cumulative ΔLST (℃·day)") +  # 添加轴标签
-  theme_bw() +  # 设定主题
-  theme(panel.grid.major.x = element_blank(),         # 隐藏x轴网格线
-        panel.grid.minor.x = element_blank(),         # 隐藏x轴次要网格线
-        panel.border = element_rect(size = 2),        # 设置整个图的框线大小
+                size = 3, width = 0.5, color = "gray30") +  # Add error bars
+  labs(y = "Cumulative ΔLST (℃·day)") +  # Add y-axis label
+  theme_bw() +  # Set the theme to black and white
+  theme(panel.grid.major.x = element_blank(),         # Hide major x-axis grid lines
+        panel.grid.minor.x = element_blank(),         # Hide minor x-axis grid lines
+        panel.border = element_rect(size = 2),        # Set border size for the plot
         axis.text.y  = element_text(size = 70, color = "black"), 
-        axis.ticks.y = element_line(size = 2.5),  # 显示坐标轴刻度宽度
-        axis.ticks.length.y = unit(0.3, "cm"),   # 显示坐标轴刻度长度
+        axis.ticks.y = element_line(size = 2.5),  # Increase y-axis tick width
+        axis.ticks.length.y = unit(0.3, "cm"),   # Set y-axis tick length
         axis.title.y = element_text(size = 78), 
-        axis.title.x = element_text(size = 0),  # 隐藏 x 轴标题
-        plot.background = element_rect(size = 100),      # 设置整个图的背景框线大小
+        axis.title.x = element_text(size = 0),  # Hide x-axis title
+        plot.background = element_rect(size = 100),      # Set background border size
         plot.margin = margin(t = 20, b = 10, l = 10, r = 20, unit = "pt"),
-        legend.position = "none",
-        panel.grid = element_line(linetype = "blank"),
-        axis.text.x = element_blank(),  # 隐藏 x 轴文字
-        axis.ticks.x = element_blank()) +  # 隐藏 x 轴刻度
-  scale_y_continuous(limits = c(-1200, 0), breaks = c(-1200,-900,-600,-300,0))
+        legend.position = "none",  # Remove legend
+        panel.grid = element_line(linetype = "blank"),  # Hide grid lines
+        axis.text.x = element_blank(),  # Hide x-axis text
+        axis.ticks.x = element_blank()) +  # Hide x-axis ticks
+  scale_y_continuous(limits = c(-1200, 0), breaks = c(-1200,-900,-600,-300,0))  # Set y-axis limits and breaks
 
+# Display the plot
 p2
 
+# Save the plot as a TIFF file
 ggsave(
   filename = "./0.figure/Fig.3-barplot_mean_Cxb.tiff",
   plot = p2,  width = 16.5,  height = 13,  units = "in",  dpi = 300)
 
-###########################  03-CXc 绘制 7种 subtype的barplot图   #####################################################################
 
-df_CXc <- final_results[final_results$type == "CXc", ]  #查看数据制作S_table5
+########################### 03-CXc Plot, Barplot for 7 Subtypes  #####################################################################
+
+# Filter the data for "CXc" subtype and exclude "SOS-EOS" phase for analysis (S_table5 preparation)
+df_CXc <- final_results[final_results$type == "CXc", ]  
 df_CXc <- df_CXc[df_CXc$Phe_phase != "SOS-EOS", ]
+
+# Define color palette for each phase
 colors <- c("SOS-MGP" = "#99CC33", "MGP-GMO" = "#66CC00", "GMO-GDO" = "#006600",
             "GDO-MSP" = "#CCCC33", "MSP-EOS" = "#CC9900")
+
+# Set the order of the phases in the plot
 df_CXc$Phe_phase <- factor(df_CXc$Phe_phase, levels = names(colors)) 
 
+# Convert mean_value to numeric format
 df_CXc$mean_value <- as.numeric(df_CXc$mean_value)
 
-# 绘制柱状图并添加误差线（细化线条）
+# Create the barplot with error bars (fine-tune line widths)
 p3 <- ggplot(df_CXc, aes(x = Phe_phase, y = mean_value, fill = Phe_phase)) +
-  geom_bar(stat = "identity", color = alpha("black", 0), fill = colors) +  # 绘制柱状图
+  geom_bar(stat = "identity", color = alpha("black", 0), fill = colors) +  # Draw bar plot
   geom_errorbar(aes(ymin = mean_value - error_bars, ymax = mean_value + error_bars), 
-                size = 3, width = 0.5, color = "gray30") +  # 添加误差线
-  labs(y = "Cumulative ΔLST (℃·day)") +  # 添加轴标签
-  theme_bw() +  # 设定主题
-  theme(panel.grid.major.x = element_blank(),         # 隐藏x轴网格线
-        panel.grid.minor.x = element_blank(),         # 隐藏x轴次要网格线
-        panel.border = element_rect(size = 2),        # 设置整个图的框线大小
+                size = 3, width = 0.5, color = "gray30") +  # Add error bars
+  labs(y = "Cumulative ΔLST (℃·day)") +  # Add y-axis label
+  theme_bw() +  # Set the theme to black and white
+  theme(panel.grid.major.x = element_blank(),         # Hide major x-axis grid lines
+        panel.grid.minor.x = element_blank(),         # Hide minor x-axis grid lines
+        panel.border = element_rect(size = 2),        # Set border size for the plot
         axis.text.y  = element_text(size = 70, color = "black"), 
-        axis.ticks.y = element_line(size = 2.5),  # 显示坐标轴刻度宽度
-        axis.ticks.length.y = unit(0.3, "cm"),   # 显示坐标轴刻度长度
-        axis.title.y = element_text(size = 78, margin = margin(r = 70)),  # 调整y轴标题的边距
-        axis.title.x = element_text(size = 0),  # 隐藏 x 轴标题
-        plot.background = element_rect(size = 100),      # 设置整个图的背景框线大小
+        axis.ticks.y = element_line(size = 2.5),  # Increase y-axis tick width
+        axis.ticks.length.y = unit(0.3, "cm"),   # Set y-axis tick length
+        axis.title.y = element_text(size = 78, margin = margin(r = 70)),  # Adjust margin for y-axis title
+        axis.title.x = element_text(size = 0),  # Hide x-axis title
+        plot.background = element_rect(size = 100),      # Set background border size
         plot.margin = margin(t = 20, b = 10, l = 10, r = 20, unit = "pt"),
-        legend.position = "none",
-        panel.grid = element_line(linetype = "blank"),
-        axis.text.x = element_blank(),  # 隐藏 x 轴文字
-        axis.ticks.x = element_blank()) +  # 隐藏 x 轴刻度
-  scale_y_continuous(limits = c(0, 200), breaks = c(0,50,100,150,200))
+        legend.position = "none",  # Remove legend
+        panel.grid = element_line(linetype = "blank"),  # Hide grid lines
+        axis.text.x = element_blank(),  # Hide x-axis text
+        axis.ticks.x = element_blank()) +  # Hide x-axis ticks
+  scale_y_continuous(limits = c(0, 200), breaks = c(0,50,100,150,200))  # Set y-axis limits and breaks
 
+# Display the plot
 p3
 
+# Save the plot as a TIFF file
 ggsave(
   filename = "./0.figure/Fig.3-barplot_mean_CXc.tiff",
   plot = p3,  width = 16.5,  height = 13,  units = "in",  dpi = 300)
 
-###########################  03-DXa 绘制 7种 subtype的barplot图   #####################################################################
 
-df_DXa <- final_results[final_results$type == "DXa", ]  #查看数据制作S_table5
+########################### 03-DXa Plot, Barplot for 7 Subtypes  #####################################################################
+
+# Filter the data for "DXa" subtype and exclude "SOS-EOS" phase for analysis (S_table5 preparation)
+df_DXa <- final_results[final_results$type == "DXa", ]  
 df_DXa <- df_DXa[df_DXa$Phe_phase != "SOS-EOS", ]
+
+# Define color palette for each phase
 colors <- c("SOS-MGP" = "#99CC33", "MGP-GMO" = "#66CC00", "GMO-GDO" = "#006600",
             "GDO-MSP" = "#CCCC33", "MSP-EOS" = "#CC9900")
+
+# Set the order of the phases in the plot
 df_DXa$Phe_phase <- factor(df_DXa$Phe_phase, levels = names(colors)) 
 
+# Convert mean_value to numeric format
 df_DXa$mean_value <- as.numeric(df_DXa$mean_value)
 
-# 绘制柱状图并添加误差线（细化线条）
+# Create the barplot with error bars (fine-tune line widths)
 p4 <- ggplot(df_DXa, aes(x = Phe_phase, y = mean_value, fill = Phe_phase)) +
-  geom_bar(stat = "identity", color = alpha("black", 0), fill = colors) +  # 绘制柱状图
+  geom_bar(stat = "identity", color = alpha("black", 0), fill = colors) +  # Draw bar plot
   geom_errorbar(aes(ymin = mean_value - error_bars, ymax = mean_value + error_bars), 
-                size = 3, width = 0.5, color = "gray30") +  # 添加误差线
-  labs(y = "Cumulative ΔLST (℃·day)") +  # 添加轴标签
-  theme_bw() +  # 设定主题
-  theme(panel.grid.major.x = element_blank(),         # 隐藏x轴网格线
-        panel.grid.minor.x = element_blank(),         # 隐藏x轴次要网格线
-        panel.border = element_rect(size = 2),        # 设置整个图的框线大小
+                size = 3, width = 0.5, color = "gray30") +  # Add error bars
+  labs(y = "Cumulative ΔLST (℃·day)") +  # Add y-axis label
+  theme_bw() +  # Set the theme to black and white
+  theme(panel.grid.major.x = element_blank(),         # Hide major x-axis grid lines
+        panel.grid.minor.x = element_blank(),         # Hide minor x-axis grid lines
+        panel.border = element_rect(size = 2),        # Set border size for the plot
         axis.text.y  = element_text(size = 70, color = "black"), 
-        axis.ticks.y = element_line(size = 2.5),  # 显示坐标轴刻度宽度
-        axis.ticks.length.y = unit(0.3, "cm"),   # 显示坐标轴刻度长度
+        axis.ticks.y = element_line(size = 2.5),  # Increase y-axis tick width
+        axis.ticks.length.y = unit(0.3, "cm"),   # Set y-axis tick length
         axis.title.y = element_text(size = 78), 
-        axis.title.x = element_text(size = 0),  # 隐藏 x 轴标题
-        plot.background = element_rect(size = 100),      # 设置整个图的背景框线大小
+        axis.title.x = element_text(size = 0),  # Hide x-axis title
+        plot.background = element_rect(size = 100),      # Set background border size
         plot.margin = margin(t = 20, b = 10, l = 10, r = 20, unit = "pt"),
-        legend.position = "none",
-        panel.grid = element_line(linetype = "blank"),
-        axis.text.x = element_blank(),  # 隐藏 x 轴文字
-        axis.ticks.x = element_blank()) +  # 隐藏 x 轴刻度
-  scale_y_continuous(limits = c(-1200, 0), breaks = c(-1200,-900,-600,-300,0))
+        legend.position = "none",  # Remove legend
+        panel.grid = element_line(linetype = "blank"),  # Hide grid lines
+        axis.text.x = element_blank(),  # Hide x-axis text
+        axis.ticks.x = element_blank()) +  # Hide x-axis ticks
+  scale_y_continuous(limits = c(-1200, 0), breaks = c(-1200,-900,-600,-300,0))  # Set y-axis limits and breaks
 
+# Display the plot
 p4
 
+# Save the plot as a TIFF file
 ggsave(
   filename = "./0.figure/Fig.3-barplot_mean_DXa.tiff",
   plot = p4,  width = 16.5,  height = 13,  units = "in",  dpi = 300)
 
-###########################  03-DXb 绘制 7种 subtype的barplot图   #####################################################################
 
-df_DXb <- final_results[final_results$type == "DXb", ]  #查看数据制作S_table5
+########################### 03-DXb Plot Barplot for 7 Subtypes  #####################################################################
+
+# Filter the data for "DXb" subtype and exclude "SOS-EOS" phase for analysis (S_table5 preparation)
+df_DXb <- final_results[final_results$type == "DXb", ]  
 df_DXb <- df_DXb[df_DXb$Phe_phase != "SOS-EOS", ]
+
+# Define color palette for each phase
 colors <- c("SOS-MGP" = "#99CC33", "MGP-GMO" = "#66CC00", "GMO-GDO" = "#006600",
             "GDO-MSP" = "#CCCC33", "MSP-EOS" = "#CC9900")
+
+# Set the order of the phases in the plot
 df_DXb$Phe_phase <- factor(df_DXb$Phe_phase, levels = names(colors)) 
 
+# Convert mean_value to numeric format
 df_DXb$mean_value <- as.numeric(df_DXb$mean_value)
 
-
-# 绘制柱状图并添加误差线（细化线条）
+# Create the barplot with error bars (fine-tune line widths)
 p5 <- ggplot(df_DXb, aes(x = Phe_phase, y = mean_value, fill = Phe_phase)) +
-  geom_bar(stat = "identity", color = alpha("black", 0), fill = colors) +  # 绘制柱状图
+  geom_bar(stat = "identity", color = alpha("black", 0), fill = colors) +  # Draw bar plot
   geom_errorbar(aes(ymin = mean_value - error_bars, ymax = mean_value + error_bars), 
-                size = 3, width = 0.5, color = "gray30") +  # 添加误差线
-  labs(y = "Cumulative ΔLST (℃·day)") +  # 添加轴标签
-  theme_bw() +  # 设定主题
-  theme(panel.grid.major.x = element_blank(),         # 隐藏x轴网格线
-        panel.grid.minor.x = element_blank(),         # 隐藏x轴次要网格线
-        panel.border = element_rect(size = 2),        # 设置整个图的框线大小
+                size = 3, width = 0.5, color = "gray30") +  # Add error bars
+  labs(y = "Cumulative ΔLST (℃·day)") +  # Add y-axis label
+  theme_bw() +  # Set the theme to black and white
+  theme(panel.grid.major.x = element_blank(),         # Hide major x-axis grid lines
+        panel.grid.minor.x = element_blank(),         # Hide minor x-axis grid lines
+        panel.border = element_rect(size = 2),        # Set border size for the plot
         axis.text.y  = element_text(size = 70, color = "black"), 
-        axis.ticks.y = element_line(size = 2.5),  # 显示坐标轴刻度宽度
-        axis.ticks.length.y = unit(0.3, "cm"),   # 显示坐标轴刻度长度
+        axis.ticks.y = element_line(size = 2.5),  # Increase y-axis tick width
+        axis.ticks.length.y = unit(0.3, "cm"),   # Set y-axis tick length
         axis.title.y = element_text(size = 78), 
-        axis.title.x = element_text(size = 0),  # 隐藏 x 轴标题
-        plot.background = element_rect(size = 100),      # 设置整个图的背景框线大小
+        axis.title.x = element_text(size = 0),  # Hide x-axis title
+        plot.background = element_rect(size = 100),      # Set background border size
         plot.margin = margin(t = 20, b = 10, l = 10, r = 20, unit = "pt"),
-        legend.position = "none",
-        panel.grid = element_line(linetype = "blank"),
-        axis.text.x = element_blank(),  # 隐藏 x 轴文字
-        axis.ticks.x = element_blank()) +  # 隐藏 x 轴刻度
-  scale_y_continuous(limits = c(-1200, 0), breaks = c(-1200,-900,-600,-300,0))
+        legend.position = "none",  # Remove legend
+        panel.grid = element_line(linetype = "blank"),  # Hide grid lines
+        axis.text.x = element_blank(),  # Hide x-axis text
+        axis.ticks.x = element_blank()) +  # Hide x-axis ticks
+  scale_y_continuous(limits = c(-1200, 0), breaks = c(-1200,-900,-600,-300,0))  # Set y-axis limits and breaks
 
+# Display the plot
 p5
 
+# Save the plot as a TIFF file
 ggsave(
   filename = "./0.figure/Fig.3-barplot_mean_DXb.tiff",
   plot = p5,  width = 16.5,  height = 13,  units = "in",  dpi = 300)
 
-###########################  03-DXc 绘制 7种 subtype的barplot图   #####################################################################
 
-df_DXc <- final_results[final_results$type == "DXc", ]  #查看数据制作S_table5
+########################### 03-DXc Plot, Barplot for 7 Subtypes  #####################################################################
+
+# Filter the data for "DXc" subtype and exclude "SOS-EOS" phase for analysis (S_table5 preparation)
+df_DXc <- final_results[final_results$type == "DXc", ]  
 df_DXc <- df_DXc[df_DXc$Phe_phase != "SOS-EOS", ]
+
+# Define color palette for each phase
 colors <- c("SOS-MGP" = "#99CC33", "MGP-GMO" = "#66CC00", "GMO-GDO" = "#006600",
             "GDO-MSP" = "#CCCC33", "MSP-EOS" = "#CC9900")
+
+# Set the order of the phases in the plot
 df_DXc$Phe_phase <- factor(df_DXc$Phe_phase, levels = names(colors)) 
 
+# Convert mean_value to numeric format
 df_DXc$mean_value <- as.numeric(df_DXc$mean_value)
 
-# 绘制柱状图并添加误差线（细化线条）
+# Create the barplot with error bars (fine-tune line widths)
 p6 <- ggplot(df_DXc, aes(x = Phe_phase, y = mean_value, fill = Phe_phase)) +
-  geom_bar(stat = "identity", color = alpha("black", 0), fill = colors) +  # 绘制柱状图
+  geom_bar(stat = "identity", color = alpha("black", 0), fill = colors) +  # Draw bar plot
   geom_errorbar(aes(ymin = mean_value - error_bars, ymax = mean_value + error_bars), 
-                size = 3, width = 0.5, color = "gray30") +  # 添加误差线
-  labs(y = "Cumulative ΔLST (℃·day)") +  # 添加轴标签
-  theme_bw() +  # 设定主题
-  theme(panel.grid.major.x = element_blank(),         # 隐藏x轴网格线
-        panel.grid.minor.x = element_blank(),         # 隐藏x轴次要网格线
-        panel.border = element_rect(size = 2),        # 设置整个图的框线大小
+                size = 3, width = 0.5, color = "gray30") +  # Add error bars
+  labs(y = "Cumulative ΔLST (℃·day)") +  # Add y-axis label
+  theme_bw() +  # Set the theme to black and white
+  theme(panel.grid.major.x = element_blank(),         # Hide major x-axis grid lines
+        panel.grid.minor.x = element_blank(),         # Hide minor x-axis grid lines
+        panel.border = element_rect(size = 2),        # Set border size for the plot
         axis.text.y  = element_text(size = 70, color = "black"), 
-        axis.ticks.y = element_line(size = 2.5),  # 显示坐标轴刻度宽度
-        axis.ticks.length.y = unit(0.3, "cm"),   # 显示坐标轴刻度长度
+        axis.ticks.y = element_line(size = 2.5),  # Increase y-axis tick width
+        axis.ticks.length.y = unit(0.3, "cm"),   # Set y-axis tick length
         axis.title.y = element_text(size = 78), 
-        axis.title.x = element_text(size = 0),  # 隐藏 x 轴标题
-        plot.background = element_rect(size = 100),      # 设置整个图的背景框线大小
+        axis.title.x = element_text(size = 0),  # Hide x-axis title
+        plot.background = element_rect(size = 100),      # Set background border size
         plot.margin = margin(t = 20, b = 10, l = 10, r = 20, unit = "pt"),
-        legend.position = "none",
-        panel.grid = element_line(linetype = "blank"),
-        axis.text.x = element_blank(),  # 隐藏 x 轴文字
-        axis.ticks.x = element_blank()) +  # 隐藏 x 轴刻度
-  scale_y_continuous(limits = c(-1200, 0), breaks = c(-1200,-900,-600,-300,0))
+        legend.position = "none",  # Remove legend
+        panel.grid = element_line(linetype = "blank"),  # Hide grid lines
+        axis.text.x = element_blank(),  # Hide x-axis text
+        axis.ticks.x = element_blank()) +  # Hide x-axis ticks
+  scale_y_continuous(limits = c(-1200, 0), breaks = c(-1200,-900,-600,-300,0))  # Set y-axis limits and breaks
 
+# Display the plot
 p6
 
+# Save the plot as a TIFF file
 ggsave(
   filename = "./0.figure/Fig.3-barplot_mean_DXc.tiff",
   plot = p6,  width = 16.5,  height = 13,  units = "in",  dpi = 300)
 
-###########################  03-DXd 绘制 7种 subtype的barplot图   #####################################################################
 
-df_DXd <- final_results[final_results$type == "DXd", ]  #查看数据制作S_table5
+########################### 03-DXd Plot, Barplot for 7 Subtypes  #####################################################################
+
+# Filter the data for "DXd" subtype and exclude "SOS-EOS" phase for analysis (S_table5 preparation)
+df_DXd <- final_results[final_results$type == "DXd", ]  
 df_DXd <- df_DXd[df_DXd$Phe_phase != "SOS-EOS", ]
+
+# Define color palette for each phase
 colors <- c("SOS-MGP" = "#99CC33", "MGP-GMO" = "#66CC00", "GMO-GDO" = "#006600",
             "GDO-MSP" = "#CCCC33", "MSP-EOS" = "#CC9900")
+
+# Set the order of the phases in the plot
 df_DXd$Phe_phase <- factor(df_DXd$Phe_phase, levels = names(colors)) 
 
+# Convert mean_value to numeric format
 df_DXd$mean_value <- as.numeric(df_DXd$mean_value)
 
-# 绘制柱状图并添加误差线（细化线条）
+# Create the barplot with error bars (fine-tune line widths)
 p7 <- ggplot(df_DXd, aes(x = Phe_phase, y = mean_value, fill = Phe_phase)) +
-  geom_bar(stat = "identity", color = alpha("black", 0), fill = colors) +  # 绘制柱状图
+  geom_bar(stat = "identity", color = alpha("black", 0), fill = colors) +  # Draw bar plot
   geom_errorbar(aes(ymin = mean_value - error_bars, ymax = mean_value + error_bars), 
-                size = 3, width = 0.5, color = "gray30") +  # 添加误差线
-  labs(y = "Cumulative ΔLST (℃·day)") +  # 添加轴标签
-  theme_bw() +  # 设定主题
-  theme(panel.grid.major.x = element_blank(),         # 隐藏x轴网格线
-        panel.grid.minor.x = element_blank(),         # 隐藏x轴次要网格线
-        panel.border = element_rect(size = 2),        # 设置整个图的框线大小
+                size = 3, width = 0.5, color = "gray30") +  # Add error bars
+  labs(y = "Cumulative ΔLST (℃·day)") +  # Add y-axis label
+  theme_bw() +  # Set the theme to black and white
+  theme(panel.grid.major.x = element_blank(),         # Hide major x-axis grid lines
+        panel.grid.minor.x = element_blank(),         # Hide minor x-axis grid lines
+        panel.border = element_rect(size = 2),        # Set border size for the plot
         axis.text.y  = element_text(size = 70, color = "black"), 
-        axis.ticks.y = element_line(size = 2.5),  # 显示坐标轴刻度宽度
-        axis.ticks.length.y = unit(0.3, "cm"),   # 显示坐标轴刻度长度
+        axis.ticks.y = element_line(size = 2.5),  # Increase y-axis tick width
+        axis.ticks.length.y = unit(0.3, "cm"),   # Set y-axis tick length
         axis.title.y = element_text(size = 78), 
-        axis.title.x = element_text(size = 0),  # 隐藏 x 轴标题
-        plot.background = element_rect(size = 100),      # 设置整个图的背景框线大小
+        axis.title.x = element_text(size = 0),  # Hide x-axis title
+        plot.background = element_rect(size = 100),      # Set background border size
         plot.margin = margin(t = 20, b = 10, l = 10, r = 20, unit = "pt"),
-        legend.position = "none",
-        panel.grid = element_line(linetype = "blank"),
-        axis.text.x = element_blank(),  # 隐藏 x 轴文字
-        axis.ticks.x = element_blank()) +  # 隐藏 x 轴刻度
-  scale_y_continuous(limits = c(-1200, 0), breaks = c(-1200,-900,-600,-300,0))
+        legend.position = "none",  # Remove legend
+        panel.grid = element_line(linetype = "blank"),  # Hide grid lines
+        axis.text.x = element_blank(),  # Hide x-axis text
+        axis.ticks.x = element_blank()) +  # Hide x-axis ticks
+  scale_y_continuous(limits = c(-1200, 0), breaks = c(-1200,-900,-600,-300,0))  # Set y-axis limits and breaks
 
+# Display the plot
 p7
 
+# Save the plot as a TIFF file
 ggsave(
   filename = "./0.figure/Fig.3-barplot_mean_DXd.tiff",
   plot = p7,  width = 16.5,  height = 13,  units = "in",  dpi = 300)
 
-################################# 04.sum  5段时间平均积温直方图 ##################################
 
-# 文件路径和标签列表
+
+############# 04. 5 phenological phases Average Cumulative Temperature Histogram ##################################
+
+
+# File paths and labels list
 file_paths <- c(
   "./EA+NA_Results/merged_sum_diff_average/merged_sum_diff_12.tif",
   "./EA+NA_Results/merged_sum_diff_average/merged_sum_diff_23.tif",
@@ -438,122 +511,122 @@ file_paths <- c(
   "./EA+NA_Results/merged_sum_diff_average/merged_sum_diff_45.tif",
   "./EA+NA_Results/merged_sum_diff_average/merged_sum_diff_56.tif",
   "./EA+NA_Results/merged_sum_diff_average/merged_sum_diff_16.tif"
-  
 )
 
 labels <- c("SOS-MGP", "MGP-GMO", "GMO-GDO", "GDO-MSP", "MSP-EOS","SOS-EOS")
 
+# Function to perform analysis on the raster files and summarize results
 perform_analysis <- function(file_paths, labels) {
-  list_of_results <- list()
+  list_of_results <- list()  # Create an empty list to store results
   
   for (i in seq_along(file_paths)) {
     file_path <- file_paths[i]
     
-    # 读取栅格数据
+    # Read raster data
     LST_sumdiff <- raster(file_path)
     
-    # 进行分析
+    # Perform analysis to calculate mean and standard deviation of values
     results_df <- data.frame(
       mean_value = mean(values(LST_sumdiff), na.rm = TRUE),
       sd_value = sd(values(LST_sumdiff), na.rm = TRUE)
     )
     
-    # 将结果保留两位小数
+    # Round results to two decimal places
     results_df$mean_value <- round(results_df$mean_value, 2)
     results_df$sd_value <- round(results_df$sd_value, 2)
     
-    # 添加标签
+    # Add corresponding label for phase
     results_df$Phe_phase <- labels[i]
     
-    list_of_results[[i]] <- results_df
+    list_of_results[[i]] <- results_df  # Add the result to the list
   }
   
-  # 将所有结果组合成一个数据框
+  # Combine all results into a single data frame
   all_results <- do.call(rbind, list_of_results)
   
   return(all_results)
 }
 
-# 调用函数，执行分析并获取结果
+# Call the function to perform the analysis and get results
 final_results <- perform_analysis(file_paths, labels)
 print(final_results)
 
-final_results$error_bars <- round(final_results$sd_value* 0.15, 2)   #查看数据制作S_table5
+# Calculate error bars (15% of standard deviation)
+final_results$error_bars <- round(final_results$sd_value * 0.15, 2)
+
+# Find maximum and minimum values of the mean
 max_value <- max(final_results$mean_value)
 min_value <- min(final_results$mean_value)
-# class(final_results$type)
-# 打印最大和最小值
-print(paste("最大值:", max_value))
-print(paste("最小值:", min_value))
 
+# Print the maximum and minimum values
+print(paste("Maximum value:", max_value))
+print(paste("Minimum value:", min_value))
+
+# Filter out the "SOS-EOS" phase
 final_results <- final_results[final_results$Phe_phase != "SOS-EOS", ]
+
+# Define color palette for different phases
 colors <- c("SOS-MGP" = "#99CC33", "MGP-GMO" = "#66CC00", "GMO-GDO" = "#006600",
             "GDO-MSP" = "#CCCC33", "MSP-EOS" = "#CC9900")
+
+# Set the order of the phases in the plot
 final_results$Phe_phase <- factor(final_results$Phe_phase, levels = names(colors)) 
 
+# Convert mean_value to numeric format
 final_results$mean_value <- as.numeric(final_results$mean_value)
 
-# > final_results
-# mean_value sd_value Phe_phase error_bars
-# 1      31.80    59.82   SOS-MGP       8.97
-# 2      98.43    94.82   MGP-GMO      14.22
-# 3     437.49   407.79   GMO-GDO      61.17
-# 4     145.39   171.28   GDO-MSP      25.69
-# 5      39.48    70.11   MSP-EOS      10.52
-# 6     752.59   746.38      <NA>     111.96
-
-
-
+# Create the barplot with error bars (fine-tune line widths)
 p_sum <- ggplot(final_results, aes(x = Phe_phase, y = mean_value, fill = Phe_phase)) +
-  geom_bar(stat = "identity", color = alpha("black", 0), fill = colors) +  # 绘制柱状图
+  geom_bar(stat = "identity", color = alpha("black", 0), fill = colors) +  # Draw bar plot
   geom_errorbar(aes(ymin = mean_value - error_bars, ymax = mean_value + error_bars), 
-                size = 3, width = 0.5, color = "gray30") +  # 添加误差线
-  labs(y = "Cumulative ΔLST (℃·day)") +  # 添加轴标签
-  theme_bw() +  # 设定主题
-  # coord_fixed(ratio = 1/400) +
-  theme(panel.grid.major.x = element_blank(),         # 隐藏x轴网格线
-        panel.grid.minor.x = element_blank(),         # 隐藏x轴次要网格线
-        panel.border = element_rect(size = 2),        # 设置整个图的框线大小
-        # axis.text.x  = element_text(size = 55, color = "black",angle = 15,
-        #                             margin = margin(t = 25)), 
+                size = 3, width = 0.5, color = "gray30") +  # Add error bars
+  labs(y = "Cumulative ΔLST (℃·day)") +  # Add y-axis label
+  theme_bw() +  # Set the theme to black and white
+  theme(panel.grid.major.x = element_blank(),         # Hide major x-axis grid lines
+        panel.grid.minor.x = element_blank(),         # Hide minor x-axis grid lines
+        panel.border = element_rect(size = 2),        # Set border size for the plot
         axis.text.y  = element_text(size = 70, color = "black"), 
-        axis.ticks.y = element_line(size = 2.5),  # 显示坐标轴刻度宽度
-        axis.ticks.length.y = unit(0.3, "cm"),   # 显示坐标轴刻度长度
+        axis.ticks.y = element_line(size = 2.5),  # Increase y-axis tick width
+        axis.ticks.length.y = unit(0.3, "cm"),   # Set y-axis tick length
         axis.title.y = element_text(size = 78), 
-        axis.title.x = element_text(size = 0),  # 隐藏 x 轴标题
-        # axis.line.x = element_line(),         # 设置x轴颜色 color = "#999999",
-        # axis.line.y = element_line(size = 1),         # 设置y轴颜色 color = "#999999",
-        plot.background = element_rect(size = 100),      # 设置整个图的背景框线大小
-        plot.margin = margin(t = 20, b = 10, l = 10, r = 20, unit = "pt") , # 调整面板边距
-        legend.position = "none",
-        panel.grid = element_line( linetype = "blank"),
-        axis.text.x = element_blank(),  # 隐藏 x 轴文字
-        axis.ticks.x = element_blank()) +  # 隐藏 x 轴刻度
-  scale_y_continuous(limits = c(-1200, 0), breaks = c(-1200,-900,-600,-300,0))
+        axis.title.x = element_text(size = 0),  # Hide x-axis title
+        plot.background = element_rect(size = 100),      # Set background border size
+        plot.margin = margin(t = 20, b = 10, l = 10, r = 20, unit = "pt"), # Adjust panel margins
+        legend.position = "none",  # Remove legend
+        panel.grid = element_line(linetype = "blank"),  # Hide grid lines
+        axis.text.x = element_blank(),  # Hide x-axis text
+        axis.ticks.x = element_blank()) +  # Hide x-axis ticks
+  scale_y_continuous(limits = c(-1200, 0), breaks = c(-1200,-900,-600,-300,0))  # Set y-axis limits and breaks
+
+# Display the plot
 p_sum
 
+# Save the plot as a TIFF file
 ggsave(
   filename = "./0.figure/Fig.3-barplot_mean_sum.tiff",
   plot = p_sum,  width = 16.5,  height = 13,  units = "in",  dpi = 300)
 
 
-###########################  05 -AmeriFlux站点all&subtype的barplot图   #####################################################################
 
+############### 05 - AmeriFlux site all & subtype cumulative temperature barplot ################################################
+
+# Read the dataset from CSV file
 df <- read.csv("./AmerifluxData_Analysis/1330_Noen&Normal_Results_1y_17 final-info.csv")
 head(df)
-# 计算总体的平均值和标准差
+
+# Calculate the overall mean and standard deviation
 mean_all <- round(mean(df$sum_Diff_16_mean, na.rm = TRUE), 2)
 sd_all <- round(sd(df$sum_Diff_16_mean, na.rm = TRUE), 2)
 
-# 计算 Cfa 组的平均值和标准差
+# Calculate the mean and standard deviation for the Cfa group
 mean_cfa <- round(mean(df$sum_Diff_16_mean[df$Clim == "Cfa"], na.rm = TRUE), 2)
 sd_cfa <- round(sd(df$sum_Diff_16_mean[df$Clim == "Cfa"], na.rm = TRUE), 2)
 
-# 计算 Dfb 组的平均值和标准差
+# Calculate the mean and standard deviation for the Dfb group
 mean_dfb <- round(mean(df$sum_Diff_16_mean[df$Clim == "Dfb"], na.rm = TRUE), 2)
 sd_dfb <- round(sd(df$sum_Diff_16_mean[df$Clim == "Dfb"], na.rm = TRUE), 2)
 
-# 创建数据框
+# Create a summary data frame with means, standard deviations, and error bars
 summary_df <- data.frame(
   mean_value = c(mean_all, mean_cfa, mean_dfb),
   sd_value = c(sd_all, sd_cfa, sd_dfb),
@@ -561,46 +634,47 @@ summary_df <- data.frame(
   error_bars = round(c(0.15 * sd_all, 0.15 * sd_cfa, 0.15 * sd_dfb), 2)
 )
 
-# 查看结果
+# Print the summary results
 print(summary_df)
 # mean_value sd_value Group error_bars
 # 1     -558.74   633.22   All      94.98
 # 2     -950.68   628.20   CXa      94.23
 # 3     -210.35   408.01   DXb      61.20
 
-
-
+# Define the colors for the groups
 colors <- c("All" = "#663300",  "CXa" = "#CC9900", "DXb" = "#FFCC00")
-summary_df$Group <- factor(summary_df$Group, levels = names(colors)) 
+summary_df$Group <- factor(summary_df$Group, levels = names(colors))
 
+# Convert mean_value column to numeric
 summary_df$mean_value <- as.numeric(summary_df$mean_value)
 
-# 绘制柱状图并添加误差线（细化线条）
+# Plot a barplot with error bars (refined lines)
 p8 <- ggplot(summary_df, aes(x = Group, y = mean_value, fill = Group)) +
-  geom_bar(stat = "identity", color = alpha("black", 0), fill = colors) +  # 绘制柱状图
+  geom_bar(stat = "identity", color = alpha("black", 0), fill = colors) +  # Plot the bar chart
   geom_errorbar(aes(ymin = mean_value - error_bars, ymax = mean_value + error_bars), 
-                size = 3, width = 0.5, color = "gray30") +  # 添加误差线
-  labs(y = "Cumulative ΔLST (℃·day)") +  # 添加轴标签
-  theme_bw() +  # 设定主题
-  theme(panel.grid.major.x = element_blank(),         # 隐藏x轴网格线
-        panel.grid.minor.x = element_blank(),         # 隐藏x轴次要网格线
-        panel.border = element_rect(size = 2),        # 设置整个图的框线大小
+                size = 3, width = 0.5, color = "gray30") +  # Add error bars
+  labs(y = "Cumulative ΔLST (℃·day)") +  # Add axis label
+  theme_bw() +  # Set the theme
+  theme(panel.grid.major.x = element_blank(),         # Hide major x-axis grid lines
+        panel.grid.minor.x = element_blank(),         # Hide minor x-axis grid lines
+        panel.border = element_rect(size = 2),        # Set border size for the plot
         axis.text.y  = element_text(size = 70, color = "black"), 
-        axis.ticks.y = element_line(size = 2.5),  # 显示坐标轴刻度宽度
-        axis.ticks.length.y = unit(0.3, "cm"),   # 显示坐标轴刻度长度
+        axis.ticks.y = element_line(size = 2.5),  # Show y-axis tick width
+        axis.ticks.length.y = unit(0.3, "cm"),   # Show y-axis tick length
         axis.title.y = element_text(size = 78), 
-        axis.title.x = element_text(size = 0),  # 隐藏 x 轴标题
-        plot.background = element_rect(size = 100),      # 设置整个图的背景框线大小
+        axis.title.x = element_text(size = 0),  # Hide x-axis title
+        plot.background = element_rect(size = 100),      # Set the plot background border size
         plot.margin = margin(t = 20, b = 10, l = 10, r = 20, unit = "pt"),
-        legend.position = "none",
+        legend.position = "none",  # Hide the legend
         panel.grid = element_line(linetype = "blank"),
-        axis.text.x = element_blank(),  # 隐藏 x 轴文字
-        axis.ticks.x = element_blank()) +  # 隐藏 x 轴刻度
+        axis.text.x = element_blank(),  # Hide x-axis labels
+        axis.ticks.x = element_blank()) +  # Hide x-axis ticks
   scale_y_continuous(limits = c(-1200, 0), breaks = c(-1200,-900,-600,-300,0))
 
+# Display the plot
 p8
 
+# Save the plot as a TIFF image with high resolution
 ggsave(
   filename = "./0.figure/Fig.3-barplot_All_AmeriFlux.tiff",
   plot = p8,  width = 16.5,  height = 13,  units = "in",  dpi = 300)
-

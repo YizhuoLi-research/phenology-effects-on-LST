@@ -1,11 +1,11 @@
-##################  00 加载包   ##########################################################################
+#############################################  00 加载包   #################################################################
 library(terra)
 library(tidyverse)
 library(raster)
 
 setwd("D:/VegetationImpact")
 
-##################  01 按气候--subtype类型取像元计算回归线斜率--给气候类型数据添加属性   ###################
+############  01 按气候--subtype类型取像元计算各个气候区内的回归线斜率--给气候类型数据添加属性   ###################
 
 r <- raster("./EA+NA_Results/EA+NA_koppen_30km_addClimate.tif")
 r[1:30] <- seq(1,30,1)  
@@ -143,8 +143,7 @@ perform_analysis <- function(file_paths, labels) {
     results_df$stars <- ifelse(results_df$p_value <= 0.001, "***",
                                ifelse(results_df$p_value <= 0.01, "**",
                                       ifelse(results_df$p_value <= 0.05, "*", "")))
-                                      # ifelse(results_df$p_value <= 0.05, "*", 
-                                      #        sprintf("%.2f", results_df$p_value))))
+                                     
     results_df$stars <- factor(results_df$stars)
     results_df$Slope <- round(as.numeric(results_df$Slope),4)
     results_df$R_squared <- round(as.numeric(results_df$R_squared),4)

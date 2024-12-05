@@ -34,17 +34,6 @@ climate_labels <- c('Af', 'Am', 'As', 'Aw',
                     'Dsa', 'Dsb', 'Dsc','Dsd',
                     'Dwa', 'Dwb', 'Dwc','Dwd', 
                     'EF',  'ET')
-# # Color palette for climate classification (A-B-C-D-E)
-# climate_colors <- c("#960000", "#FF0000", "#FF6E6E", "#FFCCCC", 
-#                     "#CC8D14", "#CCAA54", "#FFCC00", "#FFFF64", 
-#                     "#003200", "#005000", "#007800", 
-#                     "#00D700", "#00AA00", "#96FF00",
-#                     "#BEBE00", "#8C8C00", "#5A5A00",
-#                     "#550055", "#820082", "#C800C8", "#FF6EFF",
-#                     "#646464", "#8C8C8C", "#BEBEBE", "#E6E6E6",
-#                     "#C8C8FF", "#C89BFA", "#B464FA", "#6E28B4",
-#                     "#6496FF", "#64FFFF")
-
 
 # Update raster levels with climate and colors
 levels(r) <- rat
@@ -170,53 +159,3 @@ p1
 ggsave(
   filename = "D:/01Rawdata/0.figure/Fig.S7_Koppen_Climate_6_P.tiff",
   plot = p1,  width = 38,  height = 15,  units = "in",  dpi = 300)
-
-
-
-
-
-# ################################  02.比例计算  ################################################
-# 
-# #######################
-# ## 计算Dfd, Dsd, Dwd在DXd中的占比
-# 
-# dx_climates <- c("Dfd", "Dsd", "Dwd")  # 定义需要计算的climate类型
-# 
-# # 获取DXd类别中的总数及Dfd, Dsd, Dwd的数量和占比
-# dx_stats <- common_rdf %>%
-#   filter(Type == "DXd") %>%
-#   summarise(
-#     Total = n(),
-#     Count = sapply(dx_climates, function(x) sum(climate == x)),
-#     Proportion = sapply(dx_climates, function(x) sum(climate == x) / Total)
-#   ) %>%
-#   pivot_longer(cols = starts_with("Count"), names_to = "Climate", values_to = "Count") %>%
-#   pivot_longer(cols = starts_with("Proportion"), names_to = "Climate_Proportion", values_to = "Proportion")
-# 
-# # 打印结果
-# print(dx_stats)
-# 
-# 
-# 
-# #######################   DXb中各类别占比
-# ## 计算Dfb, Dsb, Dwb在DXd中的占比
-# 
-# dx_climates <- c("Dfb", "Dsb", "Dwb")  # 定义需要计算的climate类型
-# 
-# # 获取DXd类别中的总数及Dfb, Dsb, Dwb的数量和占比
-# dx_stats <- common_rdf %>%
-#   filter(Type == "DXb") %>%
-#   summarise(
-#     Total = n(),
-#     Count = sapply(dx_climates, function(x) sum(climate == x)),
-#     Proportion = sapply(dx_climates, function(x) sum(climate == x) / Total)
-#   ) %>%
-#   pivot_longer(cols = starts_with("Count"), names_to = "Climate", values_to = "Count") %>%
-#   pivot_longer(cols = starts_with("Proportion"), names_to = "Climate_Proportion", values_to = "Proportion")
-# 
-# # 打印结果
-# print(dx_stats)
-# 
-# 
-# 
-# ############################  Dxd中各类别占比

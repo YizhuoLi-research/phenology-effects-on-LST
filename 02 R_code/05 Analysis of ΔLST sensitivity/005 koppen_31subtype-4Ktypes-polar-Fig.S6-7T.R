@@ -34,17 +34,6 @@ climate_labels <- c('Af', 'Am', 'As', 'Aw',
                     'Dsa', 'Dsb', 'Dsc','Dsd',
                     'Dwa', 'Dwb', 'Dwc','Dwd', 
                     'EF',  'ET')
-# # Color palette for climate classification (A-B-C-D-E)
-# climate_colors <- c("#960000", "#FF0000", "#FF6E6E", "#FFCCCC", 
-#                     "#CC8D14", "#CCAA54", "#FFCC00", "#FFFF64", 
-#                     "#003200", "#005000", "#007800", 
-#                     "#00D700", "#00AA00", "#96FF00",
-#                     "#BEBE00", "#8C8C00", "#5A5A00",
-#                     "#550055", "#820082", "#C800C8", "#FF6EFF",
-#                     "#646464", "#8C8C8C", "#BEBEBE", "#E6E6E6",
-#                     "#C8C8FF", "#C89BFA", "#B464FA", "#6E28B4",
-#                     "#6496FF", "#64FFFF")
-
 
 
 # Update raster levels with climate and colors
@@ -171,56 +160,3 @@ ggsave(
   filename = "./0.figure/Fig.S6_Koppen_Climate_7_T.tiff",
   plot = p1,  width = 30,  height = 15,  units = "in",  dpi = 300)
 
-
-#######################
-# ## 计算Dfd, Dsd, Dwd在DXd中的占比
-# 
-# dx_climates <- c("Dfd", "Dsd", "Dwd")  # 定义需要计算的climate类型
-# 
-# # 获取DXd类别中的总数及Dfd, Dsd, Dwd的数量和占比
-# dx_stats <- common_rdf %>%
-#   filter(Type == "DXd") %>%
-#   summarise(
-#     Total = n(),
-#     Count = sapply(dx_climates, function(x) sum(climate == x)),
-#     Proportion = sapply(dx_climates, function(x) sum(climate == x) / Total)
-#   ) %>%
-#   pivot_longer(cols = starts_with("Count"), names_to = "Climate", values_to = "Count") %>%
-#   pivot_longer(cols = starts_with("Proportion"), names_to = "Climate_Proportion", values_to = "Proportion")
-# 
-# # 打印结果
-# print(dx_stats)
-library(dplyr)
-
-# 假设你的数据框叫做 df
-# 计算Type为Cxc的比例
-cxc_proportion <- common_rdf %>%
-  summarise(
-    Total = n(),  # 计算总行数
-    Cxc_Count = sum(Type == "CXc"),  # 计算Type为Cxc的行数
-    Proportion = Cxc_Count / Total  # 计算比例
-  )
-
-# 打印结果
-print(cxc_proportion)
-
-
-# map
-library(maps)
-library(ggplot2)
-# 假设你的数据框名为 df
-# 筛选出Type为Cxc的数据
-CXc_data <- common_rdf[common_rdf$Type == "CXc",]
-
-# 获取世界地图数据
-world_map <- map_data("world")
-
-# 绘制地图并添加Cxc的位置点
-ggplot() +
-  geom_polygon(data = world_map, aes(x = long, y = lat, group = group), fill = "gray70", colour = "white") +
-  geom_point(data = CXc_data, aes(x = x, y = y), color = "red", size = 3) +
-  labs(title = "Geographical Distribution of Type Cxc",
-       x = "Longitude",
-       y = "Latitude") +
-  theme_minimal() +
-  theme(axis.title = element_text(size = 12), title = element_text(size = 14))

@@ -1,3 +1,9 @@
+# This code calculates various statistical values for Day of Year (DOY) for North America (NA),
+# Euraisa (EA) and the Northern Hemisphere (NH).
+# specifically focusing on phenological events (from SOS to EOS). It computes the mean, maximum, minimum, 
+# and standard deviation of the DOY rasters, then calculates a linear trend across the years 2013 to 2021 
+# using a linear regression. The results are summarized and printed in a data frame for further analysis.
+
 ###### 0. 加载包 ####
 library(terra)
 library(tidyverse)
@@ -5,88 +11,97 @@ library(raster)
 
 setwd("D:/VegetationImpact")
 
-################################   01  计算DOY-NorthAmerica  ##################################
+###### 0. Load Packages ####
+# Purpose: Load necessary libraries for raster processing, data manipulation, and file handling.
+library(terra)
+library(tidyverse)
+library(raster)
+
+# Set the working directory
+setwd("D:/VegetationImpact")
+
+################################   01 Calculate DOY for North America  ##################################
 ###############################################################################################         
-# NA
-# # SOS: phe1_DOY_.   ;  MGP: phe2_DOY_.    ；  GMO：phe3_DOY_.
-# # GDO: phe4_DOY_.   ;  MSP: phe5_DOY_.    ；  EOS：phe6_DOY_.
+# NA (North America)
+# SOS: phe1_DOY_;  MGP: phe2_DOY_;  GMO: phe3_DOY_;
+# GDO: phe4_DOY_;  MSP: phe5_DOY_;  EOS: phe6_DOY_;
 
-# #  The code modifies the pattern in list.files() to match all six phenological
-# #  events (phe1_DOY_ to phe6_DOY_) in a single run for processing.
+# The code modifies the pattern in list.files() to match all six phenological
+# events (phe1_DOY_ to phe6_DOY_) in a single run for processing.
 
-
+# List the files for the "phe6_DOY_" event in the North America directory
 file_list <- list.files("./NA_Results/0.phe_DOY/0common_pixel/", 
                         pattern = "phe6_DOY_.*\\.tif$", full.names = TRUE)
 
-# 读取所有影像
+# Read all the raster images for "phe6_DOY_"
 rasters <- stack(file_list)
 mean_raster <- calc(rasters, fun = mean, na.rm = TRUE)
 
-
-# 计算均值、最大、最小、0.15倍标准差
+# Calculate the mean, maximum, minimum, and 0.15 times the standard deviation
 mean_value <- ceiling(cellStats(mean_raster, stat = 'mean', na.rm = TRUE))
 max_value <- round(cellStats(mean_raster, stat = 'max', na.rm = TRUE),2)
 min_value <- round(cellStats(mean_raster, stat = 'min', na.rm = TRUE),2)
 sd_value <- round(cellStats(mean_raster, stat = 'sd', na.rm = TRUE),2)
 spatial_sd_variation <- round(0.15 * sd_value,2)
 
-# 打印结果
+# Print the results (commented out, but useful for debugging)
 # cat("Mean:", mean_value, "\n",
 #     "Max:", max_value, "\n",
 #     "Min:", min_value, "\n",
 #     "0.15 * SD (Spatial Variation):", spatial_sd_variation, "\n")
 
-##########计算逐渐趋势
-# 定义用于计算趋势的函数
-
+########## Calculate the trend over time ##########
+# Define a function to calculate the trend for each pixel
 
 calc_trend <- function(pixel_values, ...) {
   if (all(is.na(pixel_values))) {
-    return(NA)  # 如果所有像元值都是NA，返回NA
+    return(NA)  # Return NA if all pixel values are NA
   }
   
-  # 去除 NA 值
+  # Remove NA values
   valid_values <- !is.na(pixel_values)
   if (sum(valid_values) < 3) {
-    return(NA)  # 如果有效数据点少于2个，返回NA
+    return(NA)  # Return NA if there are fewer than 3 valid data points
   }
   
-  # 定义年份
-  years <- 2013:2021  # 与数据文件对应的年份
-  # year==2013
-  # 执行线性回归
+  # Define the years corresponding to the data
+  years <- 2013:2021  # Years corresponding to the data files
+  
+  # Perform linear regression to calculate the trend
   model <- lm(pixel_values ~ years)
   
-  # 返回回归斜率（trend）
+  # Return the regression slope (trend)
   return(coef(model)[2])
 }
 
-# 使用 calc 函数对栅格逐像元计算趋势
+# Use the calc function to calculate the trend for each pixel
 trend_raster <- calc(rasters, fun = calc_trend, na.rm = TRUE)
 
+# Summary of the trend raster
 summary(trend_raster[])
 
-# # 查看趋势影像
+# # Uncomment to view the trend raster plot
 # plot(trend_raster, main = "DOY Trend (2013-2021)")
 # summary(trend_raster)
-# 计算平均趋势值±0.15sd
+
+# Calculate the average trend and ±0.15 SD
 mean_trend <- mean(trend_raster[], na.rm = TRUE)
 sd_trend <- sd(trend_raster[], na.rm = TRUE)
 spatial_sd_trend <- round(0.15 * sd_trend,2)
 
-##总结结果
+## Summarize the results in a data frame
 results_df <- data.frame(
   Metric = c("Mean_DOY", "Max_DOY", "Min_DOY", 
              "Mean_Trend", "Max_Trend", "Min_Trend"),
-  Value = c(paste(mean_value, "±", spatial_sd_variation),  # 取整
-            round(max_value, 2),                           # 保留2位小数
-            round(min_value, 2),                           # 保留2位小数
-            paste(round(mean_trend, 2), "±", round(spatial_sd_trend, 2)), # 保留2位小数
-            round(max(trend_raster[], na.rm = TRUE), 2),   # 保留2位小数
-            round(min(trend_raster[], na.rm = TRUE), 2) )  # 保留2位小数
+  Value = c(paste(mean_value, "±", spatial_sd_variation),  # Round the mean and spatial variation
+            round(max_value, 2),                           # Round the max value to 2 decimal places
+            round(min_value, 2),                           # Round the min value to 2 decimal places
+            paste(round(mean_trend, 2), "±", round(spatial_sd_trend, 2)), # Round the trend mean and spatial variation
+            round(max(trend_raster[], na.rm = TRUE), 2),   # Round the max trend value to 2 decimal places
+            round(min(trend_raster[], na.rm = TRUE), 2) )  # Round the min trend value to 2 decimal places
 )
 
-# 打印结果表格
+# Print the summarized results in a table
 print(results_df)
 
 # #SOS  phe1_DOY_.
@@ -136,76 +151,102 @@ print(results_df)
 # 4 Mean_Trend -0.19 ± 0.2
 # 5  Max_Trend          21
 # 6  Min_Trend       -17.1
-#####################################   02  计算DOY-Euraisa  #################################
-###############################################################################################      
-####Eurasia
-file_list <- list.files("./EA_Results/0.phe_DOY/0common_pixel/",
+
+
+###### 0. Load Packages ####
+# Purpose: Load necessary libraries for raster processing, data manipulation, and file handling.
+library(terra)
+library(tidyverse)
+library(raster)
+
+# Set the working directory
+setwd("D:/VegetationImpact")
+
+################################   01 Calculate DOY for North America  ##################################
+###############################################################################################         
+# NA (North America)
+# SOS: phe1_DOY_;  MGP: phe2_DOY_;  GMO: phe3_DOY_;
+# GDO: phe4_DOY_;  MSP: phe5_DOY_;  EOS: phe6_DOY_;
+
+# The code modifies the pattern in list.files() to match all six phenological
+# events (phe1_DOY_ to phe6_DOY_) in a single run for processing.
+
+# List the files for the "phe6_DOY_" event in the North America directory
+file_list <- list.files("./NA_Results/0.phe_DOY/0common_pixel/", 
                         pattern = "phe6_DOY_.*\\.tif$", full.names = TRUE)
 
-
-# 读取所有影像
+# Read all the raster images for "phe6_DOY_"
 rasters <- stack(file_list)
 mean_raster <- calc(rasters, fun = mean, na.rm = TRUE)
 
-
-# 计算均值、最大、最小、0.15倍标准差
+# Calculate the mean, maximum, minimum, and 0.15 times the standard deviation
 mean_value <- ceiling(cellStats(mean_raster, stat = 'mean', na.rm = TRUE))
 max_value <- round(cellStats(mean_raster, stat = 'max', na.rm = TRUE),2)
 min_value <- round(cellStats(mean_raster, stat = 'min', na.rm = TRUE),2)
 sd_value <- round(cellStats(mean_raster, stat = 'sd', na.rm = TRUE),2)
 spatial_sd_variation <- round(0.15 * sd_value,2)
 
-##########计算逐渐趋势
-# 定义用于计算趋势的函数
+# Print the results (commented out, but useful for debugging)
+# cat("Mean:", mean_value, "\n",
+#     "Max:", max_value, "\n",
+#     "Min:", min_value, "\n",
+#     "0.15 * SD (Spatial Variation):", spatial_sd_variation, "\n")
+
+########## Calculate the trend over time ##########
+# Define a function to calculate the trend for each pixel
 
 calc_trend <- function(pixel_values, ...) {
   if (all(is.na(pixel_values))) {
-    return(NA)  # 如果所有像元值都是NA，返回NA
+    return(NA)  # Return NA if all pixel values are NA
   }
-
-  # 去除 NA 值
+  
+  # Remove NA values
   valid_values <- !is.na(pixel_values)
   if (sum(valid_values) < 3) {
-    return(NA)  # 如果有效数据点少于2个，返回NA
+    return(NA)  # Return NA if there are fewer than 3 valid data points
   }
-
-  # 定义年份
-  years <- 2013:2021  # 与数据文件对应的年份
-  # year==2013
-  # 执行线性回归
+  
+  # Define the years corresponding to the data
+  years <- 2013:2021  # Years corresponding to the data files
+  
+  # Perform linear regression to calculate the trend
   model <- lm(pixel_values ~ years)
-
-  # 返回回归斜率（trend）
+  
+  # Return the regression slope (trend)
   return(coef(model)[2])
 }
 
-# 使用 calc 函数对栅格逐像元计算趋势
+# Use the calc function to calculate the trend for each pixel
 trend_raster <- calc(rasters, fun = calc_trend, na.rm = TRUE)
 
+# Summary of the trend raster
 summary(trend_raster[])
 
-# # 查看趋势影像
+# # Uncomment to view the trend raster plot
 # plot(trend_raster, main = "DOY Trend (2013-2021)")
 # summary(trend_raster)
-# 计算平均趋势值±0.15sd
+
+# Calculate the average trend and ±0.15 SD
 mean_trend <- mean(trend_raster[], na.rm = TRUE)
 sd_trend <- sd(trend_raster[], na.rm = TRUE)
 spatial_sd_trend <- round(0.15 * sd_trend,2)
 
-##总结结果
+## Summarize the results in a data frame
 results_df <- data.frame(
-  Metric = c("Mean_DOY", "Max_DOY", "Min_DOY",
+  Metric = c("Mean_DOY", "Max_DOY", "Min_DOY", 
              "Mean_Trend", "Max_Trend", "Min_Trend"),
-  Value = c(paste(mean_value, "±", spatial_sd_variation),  # 取整
-            round(max_value, 2),                           # 保留一位小数
-            round(min_value, 2),                           # 保留一位小数
-            paste(round(mean_trend, 2), "±", round(spatial_sd_trend, 2)), # 保留一位小数
-            round(max(trend_raster[], na.rm = TRUE), 2),   # 保留一位小数
-            round(min(trend_raster[], na.rm = TRUE), 2) )  # 保留一位小数
+  Value = c(paste(mean_value, "±", spatial_sd_variation),  # Round the mean and spatial variation
+            round(max_value, 2),                           # Round the max value to 2 decimal places
+            round(min_value, 2),                           # Round the min value to 2 decimal places
+            paste(round(mean_trend, 2), "±", round(spatial_sd_trend, 2)), # Round the trend mean and spatial variation
+            round(max(trend_raster[], na.rm = TRUE), 2),   # Round the max trend value to 2 decimal places
+            round(min(trend_raster[], na.rm = TRUE), 2) )  # Round the min trend value to 2 decimal places
 )
 
-# 打印结果表格
+# Print the summarized results in a table
 print(results_df)
+
+
 
 ##SOS  phe1_DOY_.
 # 1   Mean_DOY  123 ± 3.04
@@ -254,83 +295,87 @@ print(results_df)
 # 4 Mean_Trend 0.24 ± 0.17
 # 5  Max_Trend       16.25
 # 6  Min_Trend       -37.5
-############################   03  计算DOY-Northern Hemisphere  ###############################
+
+
+############################   03  Calculate DOY for Northern Hemisphere  ###############################
 ###############################################################################################      
+# List all phe6_DOY files for the Northern Hemisphere
 file_list <- list.files("./EA+NA_Results/merge_Phe_DOY_years/merged_phe6_DOY/", 
                         pattern = "phe6_DOY_.*\\.tif$", full.names = TRUE)
 
+# phe1_DOY_. phe2_DOY_. phe3_DOY_. phe4_DOY_. phe5_DOY_. phe6_DOY_.
 
-#phe1_DOY_. phe2_DOY_. phe3_DOY_. phe4_DOY_. phe5_DOY_. phe6_DOY_.
-
-# 读取所有影像
+# Read all raster images
 rasters <- stack(file_list)
 mean_raster <- calc(rasters, fun = mean, na.rm = TRUE)
 
-
-# 计算均值、最大、最小、0.15倍标准差
+# Calculate mean, maximum, minimum, and 0.15 times the standard deviation
 mean_value <- ceiling(cellStats(mean_raster, stat = 'mean', na.rm = TRUE))
 max_value <- cellStats(mean_raster, stat = 'max', na.rm = TRUE)
 min_value <- cellStats(mean_raster, stat = 'min', na.rm = TRUE)
 sd_value <- cellStats(mean_raster, stat = 'sd', na.rm = TRUE)
-spatial_sd_variation <- round(0.15 * sd_value,2)
+spatial_sd_variation <- round(0.15 * sd_value, 2)
 
-# 打印结果
+# Print the results (commented out)
 # cat("Mean:", mean_value, "\n",
 #     "Max:", max_value, "\n",
 #     "Min:", min_value, "\n",
 #     "0.15 * SD (Spatial Variation):", spatial_sd_variation, "\n")
 
-##########计算逐渐趋势
-# 定义用于计算趋势的函数
+########## Calculate Temporal Trend
+# Define a function to calculate trends for each pixel
 
 calc_trend <- function(pixel_values, ...) {
   if (all(is.na(pixel_values))) {
-    return(NA)  # 如果所有像元值都是NA，返回NA
+    return(NA)  # Return NA if all pixel values are NA
   }
   
-  # 去除 NA 值
+  # Remove NA values
   valid_values <- !is.na(pixel_values)
   if (sum(valid_values) < 3) {
-    return(NA)  # 如果有效数据点少于2个，返回NA
+    return(NA)  # Return NA if fewer than 3 valid data points
   }
   
-  # 定义年份
-  years <- 2013:2021  # 与数据文件对应的年份
-  # year==2013
-  # 执行线性回归
+  # Define years corresponding to the data
+  years <- 2013:2021  # Years corresponding to the data files
+  
+  # Perform linear regression to calculate the trend
   model <- lm(pixel_values ~ years)
   
-  # 返回回归斜率（trend）
+  # Return the regression slope (trend)
   return(coef(model)[2])
 }
 
-# 使用 calc 函数对栅格逐像元计算趋势
+# Use the calc function to calculate the trend for each pixel
 trend_raster <- calc(rasters, fun = calc_trend, na.rm = TRUE)
 
+# Summary of the trend raster
 summary(trend_raster[])
 
-# # 查看趋势影像
+# # Uncomment to view the trend raster plot
 # plot(trend_raster, main = "DOY Trend (2013-2021)")
 # summary(trend_raster)
-# 计算平均趋势值±0.15sd
+
+# Calculate the average trend and ±0.15 SD
 mean_trend <- mean(trend_raster[], na.rm = TRUE)
 sd_trend <- sd(trend_raster[], na.rm = TRUE)
-spatial_sd_trend <- round(0.15 * sd_trend,2)
+spatial_sd_trend <- round(0.15 * sd_trend, 2)
 
-##总结结果
+## Summarize Results
 results_df <- data.frame(
   Metric = c("Mean_DOY", "Max_DOY", "Min_DOY", 
              "Mean_Trend", "Max_Trend", "Min_Trend"),
-  Value = c(paste(mean_value, "±", spatial_sd_variation),
-            max_value,
-            min_value,
-            paste(round(mean_trend, 2), "±", round(spatial_sd_trend, 2)),
-            round(max(trend_raster[], na.rm = TRUE), 2),  
-            round(min(trend_raster[], na.rm = TRUE), 2) )
+  Value = c(paste(mean_value, "±", spatial_sd_variation),  # Round mean and spatial variation
+            max_value,  # No rounding for max value
+            min_value,  # No rounding for min value
+            paste(round(mean_trend, 2), "±", round(spatial_sd_trend, 2)),  # Round trend mean and spatial variation
+            round(max(trend_raster[], na.rm = TRUE), 2),  # Round max trend value
+            round(min(trend_raster[], na.rm = TRUE), 2) )  # Round min trend value
 )
 
-# 打印结果表格
+# Print the summarized results
 print(results_df)
+
 
 
 ##SOS  phe1_DOY_.

@@ -4,13 +4,6 @@
 # and standard deviation of the DOY rasters, then calculates a linear trend across the years 2013 to 2021 
 # using a linear regression. The results are summarized and printed in a data frame for further analysis.
 
-###### 0. 加载包 ####
-library(terra)
-library(tidyverse)
-library(raster)
-
-setwd("D:/VegetationImpact")
-
 ###### 0. Load Packages ####
 # Purpose: Load necessary libraries for raster processing, data manipulation, and file handling.
 library(terra)

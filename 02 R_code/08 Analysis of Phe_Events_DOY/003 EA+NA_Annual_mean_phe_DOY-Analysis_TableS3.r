@@ -155,7 +155,7 @@ library(raster)
 # Set the working directory
 setwd("D:/VegetationImpact")
 
-################################   02 Calculate DOY for North America  ##################################
+################################   02 Calculate DOY for Euriasia  ##################################
 ###############################################################################################         
 # EA (Eurasia)
 # SOS: phe1_DOY_;  MGP: phe2_DOY_;  GMO: phe3_DOY_;

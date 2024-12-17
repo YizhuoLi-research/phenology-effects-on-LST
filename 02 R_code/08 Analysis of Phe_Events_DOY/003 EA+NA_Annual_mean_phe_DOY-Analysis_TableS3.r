@@ -155,9 +155,9 @@ library(raster)
 # Set the working directory
 setwd("D:/VegetationImpact")
 
-################################   01 Calculate DOY for North America  ##################################
+################################   02 Calculate DOY for North America  ##################################
 ###############################################################################################         
-# NA (North America)
+# EA (Eurasia)
 # SOS: phe1_DOY_;  MGP: phe2_DOY_;  GMO: phe3_DOY_;
 # GDO: phe4_DOY_;  MSP: phe5_DOY_;  EOS: phe6_DOY_;
 
@@ -165,7 +165,7 @@ setwd("D:/VegetationImpact")
 # events (phe1_DOY_ to phe6_DOY_) in a single run for processing.
 
 # List the files for the "phe6_DOY_" event in the North America directory
-file_list <- list.files("./NA_Results/0.phe_DOY/0common_pixel/", 
+file_list <- list.files("./EA_Results/0.phe_DOY/0common_pixel/", 
                         pattern = "phe6_DOY_.*\\.tif$", full.names = TRUE)
 
 # Read all the raster images for "phe6_DOY_"
@@ -250,20 +250,20 @@ print(results_df)
 # 6  Min_Trend       -19.5
 
 ##MGP  phe2_DOY_.
+# 1   Mean_DOY   144 ± 2.46
+# 2    Max_DOY          209
+# 3    Min_DOY           48
+# 4 Mean_Trend -0.03 ± 0.15
+# 5  Max_Trend         14.5
+# 6  Min_Trend        -11.5
+
+##GMO  phe3_DOY_.
 # 1   Mean_DOY  164 ± 2.08
 # 2    Max_DOY         228
 # 3    Min_DOY          95
 # 4 Mean_Trend 0.06 ± 0.18
 # 5  Max_Trend        17.5
 # 6  Min_Trend         -18
-
-##GMO  phe3_DOY_.
-# 1   Mean_DOY 164 ± 2.1
-# 2    Max_DOY       228
-# 3    Min_DOY        95
-# 4 Mean_Trend 0.1 ± 0.2
-# 5  Max_Trend      17.5
-# 6  Min_Trend       -18
 
 ##GDO   phe4_DOY_.
 # 1   Mean_DOY  225 ± 1.03

@@ -608,25 +608,24 @@ ggsave(
 
 
 
-############### 05 - AmeriFlux site all & subtype cumulative temperature barplot ################################################
+############################  05 - Barplot of All & Subtypes of AmeriFlux Sites (Cumulative ΔLST)   ###########################
 
-# Read the dataset from CSV file
-df <- read.csv("./AmerifluxData_Analysis/1330_Noen&Normal_Results_1y_17 final-info.csv")
+df <- read.csv("./AmerifluxData_Analysis/1330_Noen+Normal_Results_17_all-info.csv")
 head(df)
 
-# Calculate the overall mean and standard deviation
+# Calculate overall mean and standard deviation
 mean_all <- round(mean(df$sum_Diff_16_mean, na.rm = TRUE), 2)
 sd_all <- round(sd(df$sum_Diff_16_mean, na.rm = TRUE), 2)
 
-# Calculate the mean and standard deviation for the Cfa group
+# Calculate mean and standard deviation for group Cfa
 mean_cfa <- round(mean(df$sum_Diff_16_mean[df$Clim == "Cfa"], na.rm = TRUE), 2)
 sd_cfa <- round(sd(df$sum_Diff_16_mean[df$Clim == "Cfa"], na.rm = TRUE), 2)
 
-# Calculate the mean and standard deviation for the Dfb group
+# Calculate mean and standard deviation for group Dfb
 mean_dfb <- round(mean(df$sum_Diff_16_mean[df$Clim == "Dfb"], na.rm = TRUE), 2)
 sd_dfb <- round(sd(df$sum_Diff_16_mean[df$Clim == "Dfb"], na.rm = TRUE), 2)
 
-# Create a summary data frame with means, standard deviations, and error bars
+# Create summary data frame
 summary_df <- data.frame(
   mean_value = c(mean_all, mean_cfa, mean_dfb),
   sd_value = c(sd_all, sd_cfa, sd_dfb),
@@ -634,47 +633,100 @@ summary_df <- data.frame(
   error_bars = round(c(0.15 * sd_all, 0.15 * sd_cfa, 0.15 * sd_dfb), 2)
 )
 
-# Print the summary results
+# Print summary
 print(summary_df)
-# mean_value sd_value Group error_bars
-# 1     -558.74   633.22   All      94.98
-# 2     -950.68   628.20   CXa      94.23
-# 3     -210.35   408.01   DXb      61.20
 
-# Define the colors for the groups
 colors <- c("All" = "#663300",  "CXa" = "#CC9900", "DXb" = "#FFCC00")
-summary_df$Group <- factor(summary_df$Group, levels = names(colors))
-
-# Convert mean_value column to numeric
+summary_df$Group <- factor(summary_df$Group, levels = names(colors)) 
 summary_df$mean_value <- as.numeric(summary_df$mean_value)
 
-# Plot a barplot with error bars (refined lines)
+# Plot barplot with error bars
 p8 <- ggplot(summary_df, aes(x = Group, y = mean_value, fill = Group)) +
-  geom_bar(stat = "identity", color = alpha("black", 0), fill = colors) +  # Plot the bar chart
+  geom_bar(stat = "identity", color = alpha("black", 0), fill = colors) +  # Barplot
   geom_errorbar(aes(ymin = mean_value - error_bars, ymax = mean_value + error_bars), 
-                size = 3, width = 0.5, color = "gray30") +  # Add error bars
-  labs(y = "Cumulative ΔLST (℃·day)") +  # Add axis label
-  theme_bw() +  # Set the theme
-  theme(panel.grid.major.x = element_blank(),         # Hide major x-axis grid lines
-        panel.grid.minor.x = element_blank(),         # Hide minor x-axis grid lines
-        panel.border = element_rect(size = 2),        # Set border size for the plot
+                size = 3, width = 0.5, color = "gray30") +  # Error bars
+  labs(y = "Cumulative ΔLST (℃·day)") + 
+  theme_bw() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.border = element_rect(size = 2),
         axis.text.y  = element_text(size = 70, color = "black"), 
-        axis.ticks.y = element_line(size = 2.5),  # Show y-axis tick width
-        axis.ticks.length.y = unit(0.3, "cm"),   # Show y-axis tick length
+        axis.ticks.y = element_line(size = 2.5),
+        axis.ticks.length.y = unit(0.3, "cm"),
         axis.title.y = element_text(size = 78), 
-        axis.title.x = element_text(size = 0),  # Hide x-axis title
-        plot.background = element_rect(size = 100),      # Set the plot background border size
+        axis.title.x = element_text(size = 0), 
+        plot.background = element_rect(size = 100),
         plot.margin = margin(t = 20, b = 10, l = 10, r = 20, unit = "pt"),
-        legend.position = "none",  # Hide the legend
+        legend.position = "none",
         panel.grid = element_line(linetype = "blank"),
-        axis.text.x = element_blank(),  # Hide x-axis labels
-        axis.ticks.x = element_blank()) +  # Hide x-axis ticks
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
   scale_y_continuous(limits = c(-1200, 0), breaks = c(-1200,-900,-600,-300,0))
 
-# Display the plot
 p8
 
-# Save the plot as a TIFF image with high resolution
 ggsave(
   filename = "./0.figure/Fig.3-barplot_All_AmeriFlux.tiff",
+  plot = p8,  width = 16.5,  height = 13,  units = "in",  dpi = 300)
+
+
+###########################  06 - Barplot of All & Subtypes of AmeriFlux Sites (Cumulative ΔTa)   ###########################
+
+df <- read.csv("./AmerifluxData_Analysis/Test_for_TA--RESULTS_sites_average_TAdiff_all-info.csv")
+head(df)
+
+# Calculate overall mean and standard deviation
+mean_all <- round(mean(df$AF_TA_sum_diff_16_mean, na.rm = TRUE), 2)
+sd_all <- round(sd(df$AF_TA_sum_diff_16_mean, na.rm = TRUE), 2)
+
+# Calculate mean and standard deviation for group Cfa
+mean_cfa <- round(mean(df$AF_TA_sum_diff_16_mean[df$Clim == "Cfa"], na.rm = TRUE), 2)
+sd_cfa <- round(sd(df$AF_TA_sum_diff_16_mean[df$Clim == "Cfa"], na.rm = TRUE), 2)
+
+# Calculate mean and standard deviation for group Dfb
+mean_dfb <- round(mean(df$AF_TA_sum_diff_16_mean[df$Clim == "Dfb"], na.rm = TRUE), 2)
+sd_dfb <- round(sd(df$AF_TA_sum_diff_16_mean[df$Clim == "Dfb"], na.rm = TRUE), 2)
+
+# Create summary data frame
+summary_df <- data.frame(
+  mean_value = c(mean_all, mean_cfa, mean_dfb),
+  sd_value = c(sd_all, sd_cfa, sd_dfb),
+  Group = c("All", "CXa", "DXb"),
+  error_bars = round(c(0.15 * sd_all, 0.15 * sd_cfa, 0.15 * sd_dfb), 2)
+)
+
+# Print summary
+print(summary_df)
+
+colors <- c("All" = "#663300",  "CXa" = "#CC9900", "DXb" = "#FFCC00")
+summary_df$Group <- factor(summary_df$Group, levels = names(colors)) 
+summary_df$mean_value <- as.numeric(summary_df$mean_value)
+
+# Plot barplot with error bars
+p8 <- ggplot(summary_df, aes(x = Group, y = mean_value, fill = Group)) +
+  geom_bar(stat = "identity", color = alpha("black", 0), fill = colors) +
+  geom_errorbar(aes(ymin = mean_value - error_bars, ymax = mean_value + error_bars), 
+                size = 3, width = 0.5, color = "gray30") +
+  labs(y = "Cumulative ΔTa (℃·day)") +
+  theme_bw() +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.border = element_rect(size = 2),
+        axis.text.y  = element_text(size = 70, color = "black"), 
+        axis.ticks.y = element_line(size = 2.5),
+        axis.ticks.length.y = unit(0.3, "cm"),
+        axis.title.y = element_text(size = 78, margin = margin(r = 20)), 
+        axis.title.x = element_text(size = 0),
+        plot.background = element_rect(size = 100),
+        plot.margin = margin(t = 20, b = 10, l = 20, r = 20, unit = "pt"),
+        legend.position = "none",
+        panel.grid = element_line(linetype = "blank"),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+  scale_y_continuous(limits = c(-900, 300), breaks = c(-900,-600,-300,0,300))
+
+p8
+
+ggsave(
+  filename = "./0.figure/Fig.3-barplot_All_AmeriFlux_Ta.tiff",
   plot = p8,  width = 16.5,  height = 13,  units = "in",  dpi = 300)

@@ -64,11 +64,13 @@ print(non_na_count2)
 # EA   2013 - 2013 ncells: 32020 
 
 ############### 03 Calculate multi-year averages #################################################
-# Calculate 9-year average values rmse, rmse_2, rr, rr_2, p, p2 *NA EA, run 8 times in total
+# Calculate 9-year average values me, me_2, rr, rr_2, p, p2 *NA EA, run 8 times in total
+# me:mean error for the first time iteration; me_2: mean error for the second time iteration
+# rr: R for the first time iteration; rr_2:  R for the second time iteration
 
-file_list <- list.files("./EA_Results/0.atc_evaluation/0_common_pixel",           # EA
+file_list <- list.files("./EA_Results/0.atc_evaluation/0_common_pixel",             # EA
                         pattern = "\\.tif$", full.names = TRUE)
-files <- file_list[grep("rmse\\.tif$", file_list, ignore.case = TRUE)]   # 4 parameters
+files <- file_list[grep("me\\.tif$", file_list, ignore.case = TRUE)]              # 4 parameters change to me_2 ,rr, rr_2
 
 # Create new folder
 new_folder <- "./EA_Results/0.atc_evaluation/EA_para_9yearAverge"                   # EA
@@ -90,7 +92,7 @@ if (length(average_images) > 0) {
   average_tif <- raster::mean(average_stack, na.rm = TRUE)
   
   # Generate a new file name and save the image
-  new_file_path <- file.path(new_folder, "rmse.tif")                     # 4 parameters
+  new_file_path <- file.path(new_folder, "me.tif")                     # 4 parameters
   raster::writeRaster(average_tif, filename = new_file_path, overwrite = TRUE)
 }
 
@@ -103,7 +105,7 @@ df1$average <- as.numeric(as.character(df1$average))
 summary(df1$average)
 
 #### Check data
-# RMSE
+# ME
 over_10_count <- sum(df1$average > 10, na.rm = TRUE)
 total_count <- length(df1$average)
 over_10_percentage <- over_10_count /  total_count * 100

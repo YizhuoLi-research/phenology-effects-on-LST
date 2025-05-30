@@ -779,3 +779,89 @@ p8 <- ggplot(final_data_merged, aes(x = group, y = Percentage, fill = ΔLST)) +
 p8
 ggsave(filename =  "./0.figure/Fig.2-P&Npercent_8.tiff", 
        plot = p8, width = 20, height = 5 , units = "in", dpi = 300)
+
+
+############################### 9  AmeriFlux Positive/Negative ΔTa Histogram ##################################
+
+df <- read.csv("./AmerifluxData_Analysis/Test_for_TA--RESULTS_sites_average_TAdiff_all-info.csv")
+head(df)
+values1 <- df$AF_TA_average_diff_1_mean  
+values2 <- df$AF_TA_average_diff_6_mean   
+
+calculate_data_merged <- function(values, group_name) {
+  non_null_count <- sum(!is.na(values))
+  negative_count <- sum(values < 0, na.rm = TRUE)
+  positive_count <- sum(values > 0, na.rm = TRUE)
+  
+  negative_percentage <- round((negative_count / non_null_count) * 100, 2)
+  positive_percentage <- round((positive_count / non_null_count) * 100, 2)
+  
+  total_percentage <- 100
+  
+  data_merged <- data.frame(
+    ΔTa = c("Negative", "Positive"),
+    Percentage = c(negative_percentage, positive_percentage),
+    # Label position for percentage text
+    LabelPos = c(25, 94),
+    group = group_name
+  )
+  
+  return(data_merged)
+}
+
+# List containing all values
+value_list <- list(values1, values2)
+group_names <- c("Green-up", "Dormancy")
+
+# Apply function to each value and store results in a list
+result_list <- lapply(1:length(value_list), function(i) {
+  calculate_data_merged(value_list[[i]], group_names[i])
+})
+
+# Merge all data_merged results
+final_data_merged <- do.call(rbind, result_list)
+final_data_merged$group <- factor(final_data_merged$group, 
+                                  c("Green-up", "Dormancy"))  # Control factor order
+final_data_merged$ΔTa <- factor(final_data_merged$ΔTa, levels = c("Positive", "Negative"))
+
+# Plot stacked bar chart
+p9 <- ggplot(final_data_merged, aes(x = group, y = Percentage, fill = ΔTa)) +
+  geom_col(position = "stack", width = 0.49) +  # Adjust bar width
+  labs(x = "Phenological index", y = "Percentage (%)") +
+  scale_fill_manual(values = c("Negative" = "lightblue", "Positive" = "orange")) +
+  theme_bw() +
+  geom_text(aes(label = paste0(sprintf("%.0f", Percentage), "%"), y = LabelPos), size = 10) +
+  theme(
+    axis.line = element_blank(),  # Remove default axis lines
+    axis.ticks.x = element_line(),  # Show x-axis ticks
+    axis.ticks.y = element_line(size = 1),  # Y-axis tick width
+    axis.ticks.length.y = unit(0.2, "cm"),  # Y-axis tick length
+    axis.title = element_text(size = 32),
+    axis.text = element_text(size = 29, color = "gray20"),
+    axis.title.x = element_text(margin = margin(t = 15)),  # Move x-axis label downward
+    legend.title = element_blank(),
+    legend.text = element_text(size = 29),
+    legend.spacing.y = unit(0.7, "cm"),  # Space between legend title and items
+    legend.position = "right",
+    legend.direction = "horizontal",  # Horizontal legend layout
+    legend.key.width = unit(1.0, "cm"),
+    panel.border = element_rect(color = "gray40", size = 1.5),  # Gray border
+    panel.grid = element_line(linetype = "blank")  # Remove grid lines
+  ) +
+  geom_point(
+    data = subset(final_data_merged, ΔTa == "Negative"),
+    aes(x = as.numeric(group), y = Percentage),
+    color = "red", size = 1.5, show.legend = FALSE
+  ) +  # Add red points for Negative values
+  guides(fill = guide_legend(
+    byrow = TRUE, nrow = 1,  # Arrange legend in one row
+    label.theme = element_text(margin = margin(r = 10))  # Add space after legend labels
+  )) +
+  coord_fixed(ratio = 1/80) +
+  scale_y_continuous(breaks = seq(0, 100, by = 25), limits = c(0, 135))  # Custom y-axis
+
+p9
+
+# Save figure
+ggsave(filename = "./0.figure/Fig.2-P&Npercent_8_TA.tiff", 
+       plot = p9, width = 18, height = 5, units = "in", dpi = 300)

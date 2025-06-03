@@ -25,8 +25,8 @@ setwd("D:/VegetationImpact")
 df <- read.csv("./AmerifluxData_Analysis/1330_Noen+Normal_Results_23_all-info.csv")
 head(df)
 
-# Filter the data to keep only DBF and MF vegetation types
-selected_df <- df[df$Veg %in% c("DBF", "MF"), ]
+# Filter the data to keep only DBF, DNF, MF vegetation types
+selected_df <- df[df$Veg %in% c("DBF", "DNF", "MF"), ]
 head(selected_df)
 
 # Save the filtered data to a new file

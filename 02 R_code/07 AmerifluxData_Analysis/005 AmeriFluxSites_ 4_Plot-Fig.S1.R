@@ -11,7 +11,7 @@ library(sf)
 library(ggrepel)
 
 
-#################### 02 Plotting Ameriflux Site Map 1: Immediate Temperature Effect after Greenup ######################
+#################### 01 Plotting Ameriflux Site Map 1: Immediate Temperature Effect after Greenup ######################
 # This section of the code visualizes the immediate temperature effect after greenup for Ameriflux sites.
 # Purpose: The goal of this section is to create a map that visualizes the immediate temperature effect (ΔLST) 
 # after greenup for Ameriflux sites, using their geographic coordinates and temperature data (ΔLST values).
@@ -230,7 +230,7 @@ ggsave(
   plot = p3,  width = 20,  height = 15,  units = "in",  dpi = 300)  # Set the output dimensions and resolution
 
 
-#################  03 Plot Ameriflux Site Map 4: Growing Season Length ######################
+#################  04 Plot Ameriflux Site Map 4: Growing Season Length ######################
 # Purpose: Read the dataset, preprocess the data, and plot the growing season length at Ameriflux sites
 
 
